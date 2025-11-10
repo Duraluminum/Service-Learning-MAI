@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ПланДЗ</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Nunito:ital,wght@0,200..1000;1,200..1000&display=swap');
+
+
+        /* Default (Light) Theme Variables */
+        :root {
+            --bg-color: #f4f4f4;
+            --container-bg: #fff;
+            --main-color: #0073BB;
+            --header-bg: #0095DA;
+            --input-bg: #C8F4FA;
+            --item-bg: #EFFBFC;
+            --tem-bg: #ffffff;
+            --text-color: #0073BB;
+            --shadow-color: rgba(0, 0, 0, 0.1);
+            --header-text: #fff;
+            --completed-bg: #e0e0e0;
+            --completed-text: #888;
+            --n-c: #fff;
+        }
+
+        /* Dark Mode Theme Variables (applied when body has .dark-mode class) */
+        .dark-mode {
+            --bg-color: #121212;
+            --container-bg: #1e1e1e;
+            --main-color: #0095DA;
+            --header-bg: #00569C;
+            --input-bg: #333;
+            --item-bg: #2c2c2c;
+            --tem-bg: #2c2c2c;
+            --text-color: #e0e0e0;
+            --shadow-color: rgba(0, 0, 0, 0.5);
+            --header-text: #010101;
+            --completed-bg: #444;
+            --completed-text: #aaa;
+            --n-c: #1e1e1e;
+        }
+
+
+        body {
+            font-family: "Nunito", sans-serif;
+            background-color: var(--bg-color);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding-left: 2%;
+            padding-right: 2%;
+            padding-top: 5%;
+            color: var(--text-color);
+            transition: background-color 0.4s, color 0.4s;
+        }
+        
+        a {
+            text-decoration: none; /* Убирает подчеркивание */
+        }
+
+        .wrapper {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            background-color: var(--header-bg);
+            height: 12%;
+            box-shadow: 0 2px 10px var(--shadow-color);
+        }
+
+        .logo {
+            font-size: 350%;
+            font-weight: 700;
+        }
+
+
+        .nav  {
+            padding: 0.5%; /* Adjusted pa*/
+            margin-left: auto;
+            margin-right: auto;
+            width: 90%;
+        }
+
+
+        nav .kom {
+            list-style: none;
+            display: flex;
+            justify-content: space-between;
+
+        }
+        
+        .kartinka {
+            margin-left: 5%;
+            font-family: "Nunito", sans-serif;
+            font-weight: 400;
+            color: var(--header-text);
+            margin-top: 1%;
+            /*display: flex;
+            align-items: center;*/
+        }
+
+        .plan {
+            margin-right: 5%;
+            font-family: "Nunito", sans-serif;
+            font-weight: 400;
+            color: var(--header-text);
+            margin-top: 1%;
+            
+        }
+
+
+        .nazv {
+            background-color: var(--input-bg);
+            font-weight: 400;
+            border: none;
+            border-radius: 10px;
+        } 
+    
+    
+        .container {
+            background-color: var(--container-bg);
+            padding-left: 10%;
+            padding-right: 10%;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 500px;
+            transition: background-color 0.3s, box-shadow 0.3s; /*хз что делает*/
+            
+            padding-bottom: 2%;
+        }
+
+        h1, h2 {
+            font-family: "Nunito", sans-serif;
+            color: var(--main-color);
+            text-align: center;
+        }
+
+
+        h3 {
+            font-family: "Nunito", sans-serif;
+            color: var(--main-color);
+            text-align: center;
+            background-color: var(--input-bg);
+            border-radius: 7px;
+            
+        }
+
+        
+        ul {
+            font-family: "Nunito", sans-serif;
+            list-style-type: none;
+            padding: 0;
+            
+            
+            color: var(--text-color);
+            border-radius: 10px;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            
+        }
+        
+        .tsp {
+            font-size: x-large;
+            margin-top: -25px;
+            margin-bottom: -25px;
+            width: 100%;
+            
+        }
+        /* --- Общие стили кнопок и элементов списка --- */
+        button {
+            font-family: "Nunito", sans-serif;
+            background-color: var(--input-bg);
+            color: var(--main-color);
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+        }
+
+        
+        .task-item {
+            font-family: "Nunito", sans-serif;
+            padding: 10px;
+            background-color: var(--item-bg);
+            border: 1px solid var(--item-bg);
+            border-radius: 10px;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: background-color 0.3s; /*хз что делает*/
+        }
+
+        .con {
+            
+            border-radius: 10px;
+            margin-bottom: 5%;
+            display: flex;
+            justify-content: space-between;
+        }
+        .dm-btn {
+            margin-top: -5%;
+        }
+
+        button.back-btn {
+            
+            transition: all 500ms ease;
+            transform: scale(1);
+            margin-top: 18%;
+            height: 35px;
+            width: 90px;
+            
+        }
+        .btn {
+            margin-top: 20px; /**/
+            transition: all 500ms ease;
+            transform: scale(1);
+            border-radius: 10px;
+            height: 80px;
+            width: 100%;
+            
+        }
+        .tb {
+            margin-top: -17%;
+        }
+        .back-btn:hover {
+            transform: scale(1.1);
+
+        }
+        .dm-btn {
+            margin-top: -2%;
+            margin-bottom: 10px;
+        }
+        .btn {
+            font-family: "Nunito", sans-serif;
+            color: #0073BB;
+            text-align: center;
+            transform: scale(0.5);
+            font-size: large;
+            width: 100%;
+            border-radius: 20px;
+            display: block;
+            transition: all 500ms ease;
+        }
+
+        .btn:hover{
+            transform: scale(0.55);
+        }
+        .task-date-display {
+            font-family: "Nunito", sans-serif;
+            font-size: 0.8em;
+            color: var(--completed-text);
+            margin-right: 10px;
+        }
+        
+        .task-checkbox {
+            font-family: "Nunito", sans-serif;
+            margin-left: 10px;
+            cursor: pointer;
+            color: var(--main-color);
+        }
+
+        .task-item.completed {
+            font-family: "Nunito", sans-serif;
+            text-decoration: line-through;
+            color: var(--completed-text);
+            background-color: var(--completed-bg);
+        }
+
+        /* --- Страницы --- */
+        #allTasksPage {
+            display: none; /* Скрываем вторую страницу по умолчанию */            
+        }
+        
+        .input-group {
+            font-family: "Nunito", sans-serif;
+            color: #0073BB;
+            text-align: center;
+            font-family: "Nunito", sans-serif;
+            display: flex;
+            flex-direction: column;
+            margin-bottom: 15px;
+            width: 100%;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .input-group input {
+            font-family: "Nunito", sans-serif;
+            background-color: var(--tem-bg);
+            color: var(--text-color);
+            text-align: center;
+            font-family: "Nunito", sans-serif;
+            padding: 10px;
+            margin-bottom: 10px;
+            border: 1px solid #ddd;
+            border-radius: 15px;
+            width: 100%;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .input-group button.add-task-btn {
+            background-color: var(--n-c);
+            width: 100%;
+            
+        }
+         
+        .add-task-btn {
+            font-family: "Nunito", sans-serif;
+            
+            text-align: center;
+            transform: scale(1);
+            font-size: large;
+            width: 100%;
+            border-radius: 20px;
+            display: block;
+            transition: all 500ms ease;
+            margin-top: 20px;
+            margin-bottom: -10px;
+        }
+
+        .add-task-btn:hover{
+            transform: scale(1.1);
+        }
+        
+        .dm {
+            margin-top: 5%;
+        }
+
+        
+        
+    </style>
+</head>
+<body>
+    <div class="wrapper">
+        <nav>
+            <div class="kom">
+                <div class="kartinka"><img src="https://mai.ru/press/brand/download/Inverse/RU/Inverse.svg" alt="картинка" width="78" height="75"></div>
+                <div class="plan"><span class="logo">ПланДЗ</span></div>
+            </div>
+            
+        </nav> 
+    </div>
+
+    <div class="container">
+        <!-- --- Страница 1: Задания на сегодня --- -->
+        <div id="homePage">
+            <button class="dm" onclick="toggleDarkMode()" title="Переключить тему"><img width="34" height="34" src="https://img.icons8.com/dusk/64/bright-moon.png" alt="bright-moon"/></button>
+            <div class="nazv"><h1>Текущие задания</h1></div>
+            <p><h3>сегодня: <span id="todayDateDisplay"></span></h3></p>
+            <ul id="todayTaskList">
+                <!-- Задания будут добавлены сюда -->
+            </ul>
+            <div style="text-align: center; font-size: 800; ">
+                <button class="btn" onclick="goToAllTasksPage()"><div class="tsp"><h3>Список заданий</h3></div></button>
+            </div>
+        </div>
+
+        <!-- --- Страница 2: Все задания и форма добавления --- -->
+        <div id="allTasksPage">
+            <button class="back-btn" onclick="goToHomePage()"><div class="tb"><h2>Назад</h2></div></button>            
+            <div class="tsp"><h3>Список заданий</h3></div>
+            <div class="input-group">
+                <input type="text" id="taskInput" placeholder="Введите новое задание">
+                <input type="date" id="dateInput">
+                <button class="add-task-btn" onclick="addTask()"><div class="tsp"><h3>Добавить задание</h3></div></button>
+            </div>
+            
+            <ul id="allTaskList">
+                <!-- Все задания будут добавлены сюда -->
+            </ul>
+        </div>
+
+    </div>
+
+    <script>
+        // --- JS Логика переключения страниц и задач ---
+
+        // Функция для форматирования даты в строку 'YYYY-MM-DD'
+        function formatDate(date) {
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        }
+
+        // Получение сегодняшней даты
+        const today = new Date();
+        const todayFormatted = formatDate(today);
+        document.getElementById('todayDateDisplay').textContent = today.toLocaleDateString('ru-RU');
+
+        // Массив для хранения всех задач (загрузка из LocalStorage)
+        let tasks = JSON.parse(localStorage.getItem('allTasksWithDateV2')) || [];
+
+        // --- Функции переключения страниц ---
+
+        function goToAllTasksPage() {
+            document.getElementById('homePage').style.display = 'none';
+            document.getElementById('allTasksPage').style.display = 'block';
+            renderAllTasks(); // Обновляем список всех задач при переходе
+            // Устанавливаем сегодняшнюю дату по умолчанию в поле ввода
+            document.getElementById('dateInput').value = todayFormatted;
+        }
+
+        function goToHomePage() {
+            document.getElementById('allTasksPage').style.display = 'none';
+            document.getElementById('homePage').style.display = 'block';
+            renderTodayTasks(); // Обновляем список задач на сегодня при возвращении
+        }
+
+        // --- Функции управления задачами ---
+
+        // Функция для отображения задач на сегодня (Страница 1)
+        function renderTodayTasks() {
+            const todayTaskList = document.getElementById('todayTaskList');
+            todayTaskList.innerHTML = ''; 
+
+            // Фильтруем только сегодняшние НЕвыполненные задачи
+            const tasksToday = tasks.filter(task => task.date === todayFormatted && !task.completed);
+
+            if (tasksToday.length === 0) {
+                todayTaskList.innerHTML = '<li>Задач на сегодня нет</li>';
+                return;
+            }
+
+            tasksToday.forEach((task) => {
+                const li = document.createElement('li');
+                li.classList.add('task-item');
+                li.innerHTML = `
+                    <span>${task.text}</span>
+                    <input type="checkbox" class="task-checkbox" onchange="toggleTaskCompleted(${task.id})">
+                `;
+                todayTaskList.appendChild(li);
+            });
+        }
+
+        // Функция для отображения всех задач (Страница 2)
+        function renderAllTasks() {
+            const allTaskList = document.getElementById('allTaskList');
+            allTaskList.innerHTML = ''; 
+
+            // Сортируем задачи по дате (сначала старые, потом новые)
+            const sortedTasks = tasks.sort((a, b) => new Date(a.date) - new Date(b.date));
+
+            sortedTasks.forEach((task) => {
+                const li = document.createElement('li');
+                li.classList.add('task-item');
+                if (task.completed) {
+                    li.classList.add('completed');
+                }
+
+                li.innerHTML = `
+                    <span>${task.text}</span>
+                    <div>
+                        <span class="task-date-display">${new Date(task.date).toLocaleDateString('ru-RU')}</span>
+                        <input type="checkbox" class="task-checkbox" ${task.completed ? 'checked' : ''} onchange="toggleTaskCompleted(${task.id})">
+                    </div>
+                `;
+                allTaskList.appendChild(li);
+            });
+        }
+
+
+        // Функция добавления новой задачи
+        function addTask() {
+            const taskInput = document.getElementById('taskInput');
+            const dateInput = document.getElementById('dateInput');
+            const taskText = taskInput.value.trim();
+            const taskDate = dateInput.value;
+
+            if (taskText === '' || taskDate === '') {
+                alert('Пожалуйста, введите задание и дату');
+                return;
+            }
+
+            const newTask = {
+                id: Date.now(), // Уникальный ID
+                text: taskText,
+                date: taskDate,
+                completed: false
+            };
+
+            tasks.push(newTask);
+            saveTasks();
+
+            taskInput.value = '';
+            dateInput.value = todayFormatted;
+            renderAllTasks(); // Обновляем список всех задач на второй странице
+        }
+
+        // Функция пометки задания как выполненного/невыполненного
+        function toggleTaskCompleted(taskId) {
+            const taskIndex = tasks.findIndex(task => task.id === taskId);
+            if (taskIndex > -1) {
+                tasks[taskIndex].completed = !tasks[taskIndex].completed;
+                saveTasks();
+                // Обновляем оба списка на всякий случай
+                renderTodayTasks(); 
+                renderAllTasks();
+            }
+        }
+
+        // Функция сохранения задач в LocalStorage
+        function saveTasks() {
+            localStorage.setItem('allTasksWithDateV2', JSON.stringify(tasks));
+        }
+
+
+        // --- Логика темной темы ---
+        function toggleDarkMode() {
+            document.body.classList.toggle('dark-mode');
+            // Сохраняем выбор пользователя в LocalStorage
+            const isDarkMode = document.body.classList.contains('dark-mode');
+            localStorage.setItem('darkModeEnabled', isDarkMode);
+            // Обновляем отображение списков, чтобы применились стили completed
+            renderTodayTasks();
+            renderAllTasks();
+        }
+
+        // Проверка при загрузке страницы, была ли включена темная тема ранее
+        function loadDarkModeSetting() {
+            const darkModeEnabled = localStorage.getItem('darkModeEnabled') === 'true';
+            if (darkModeEnabled) {
+                document.body.classList.add('dark-mode');
+            }
+        }
+        // --- Логика темной темы ---
+        function toggleDarkMode() {
+            document.body.classList.toggle('dark-mode');
+            // Сохраняем выбор пользователя в LocalStorage
+            const isDarkMode = document.body.classList.contains('dark-mode');
+            localStorage.setItem('darkModeEnabled', isDarkMode);
+            // Обновляем отображение списков, чтобы применились стили completed
+            renderTodayTasks();
+            renderAllTasks();
+        }
+
+        // Проверка при загрузке страницы, была ли включена темная тема ранее
+        function loadDarkModeSetting() {
+            const darkModeEnabled = localStorage.getItem('darkModeEnabled') === 'true';
+            if (darkModeEnabled) {
+                document.body.classList.add('dark-mode');
+            }
+        }
+        // Первоначальная загрузка и отображение задач при открытии страницы
+        document.addEventListener('DOMContentLoaded', renderTodayTasks);
+    </script>
+</body>
+</html>

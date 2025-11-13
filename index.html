@@ -250,7 +250,6 @@
             position: fixed;
             bottom: 20px;
             left: 50%;
-            transform: translateX(-50%);
             background-color: var(--error-color);
             color: white;
             padding: 12px 24px;
@@ -276,11 +275,11 @@
 
         .input-toast {
             position: absolute;
-            bottom: -40px;
+            bottom: 87px;
             left: 0;
             width: 220px;
             left: 50%;
-            background-color: #ff6b6b;
+            background-color: var(--error-color);
             color: white;
             padding: 8px 12px;
             border-radius: 8px;
@@ -289,8 +288,7 @@
             text-align: center;
             opacity: 0;
             visibility: hidden;
-            transform: translateY(10px);
-            transition: opacity 0.3s, transform 0s, visibility 0.3s;
+            transition: opacity 0.3s, transform 0s, visibility 0s;
             z-index: 10;
             /* Стрелка вверх (хвостик) */
             box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
@@ -301,10 +299,9 @@
             position: absolute;
             top: -6px;
             left: 50%;
-
             border-width: 0 6px 6px 6px;
             border-style: solid;
-            border-color: transparent transparent #ff6b6b transparent;
+            border-color: transparent transparent var(--error-color) transparent;
         }
 
         .input-toast.show {
@@ -347,11 +344,11 @@
 
             <div class="form-container">
                 <div class="input-group">
+                    <div id="input-toast" class="input-toast">Введите задание и дату</div>
                     <input type="text" id="taskInput" placeholder="Введите новое задание">
                     <input type="date" id="dateInput">
                     <button class="add-task-btn" onclick="addTask()">Добавить задание</button>
                 </div>
-                <div id="input-toast" class="input-toast">Введите задание и дату</div>
             </div>
             <ul id="allTaskList">
                 <!-- Добавится JS -->

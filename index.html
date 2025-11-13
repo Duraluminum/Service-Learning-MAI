@@ -23,6 +23,7 @@
             --completed-bg: #e0e0e0;
             --completed-text: #888;
             --n-c: #fff;
+            --error-color: #FF4747;
         }
 
         .dark-mode {
@@ -39,6 +40,7 @@
             --completed-bg: #444;
             --completed-text: #aaa;
             --n-c: #1e1e1e;
+            --error-color: #520000;
         }
 
         * {
@@ -89,6 +91,7 @@
         span {
             font-family: "Nunito", sans-serif;
             color: var(--text-color);
+
         }
 
         h1 {
@@ -177,6 +180,7 @@
             padding: 0 5%;
             max-width: 600px;
             margin: 0 auto;
+            padding-block-end: 5%;
         }
 
 
@@ -241,6 +245,73 @@
             }
 
         }
+
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: var(--error-color);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 12px;
+            font-family: "Nunito", sans-serif;
+            font-size: 16px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s, visibility 0.3s;
+            z-index: 1000;
+        }
+
+        .toast.show {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .form-container {
+            position: relative;
+            margin: 15px 0;
+        }
+
+        .input-toast {
+            position: absolute;
+            bottom: -40px;
+            left: 0;
+            width: 220px;
+            left: 50%;
+            background-color: #ff6b6b;
+            color: white;
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-family: "Nunito", sans-serif;
+            font-size: 14px;
+            text-align: center;
+            opacity: 0;
+            visibility: hidden;
+            transform: translateY(10px);
+            transition: opacity 0.3s, transform 0s, visibility 0.3s;
+            z-index: 10;
+            /* Стрелка вверх (хвостик) */
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+        }
+
+        .input-toast::before {
+            content: '';
+            position: absolute;
+            top: -6px;
+            left: 50%;
+
+            border-width: 0 6px 6px 6px;
+            border-style: solid;
+            border-color: transparent transparent #ff6b6b transparent;
+        }
+
+        .input-toast.show {
+            opacity: 1;
+            visibility: visible;
+            transform: translateX(-50%) translateY(0);
+        }
     </style>
 </head>
 
@@ -274,10 +345,13 @@
 
             <h1>Список заданий</h1>
 
-            <div class="input-group">
-                <input type="text" id="taskInput" placeholder="Введите новое задание">
-                <input type="date" id="dateInput">
-                <button class="add-task-btn" onclick="addTask()">Добавить задание</button>
+            <div class="form-container">
+                <div class="input-group">
+                    <input type="text" id="taskInput" placeholder="Введите новое задание">
+                    <input type="date" id="dateInput">
+                    <button class="add-task-btn" onclick="addTask()">Добавить задание</button>
+                </div>
+                <div id="input-toast" class="input-toast">Введите задание и дату</div>
             </div>
             <ul id="allTaskList">
                 <!-- Добавится JS -->
@@ -340,7 +414,7 @@
             list.innerHTML = '';
             const tasksToday = tasks.filter(t => t.date === todayFormatted && !t.completed);
             if (tasksToday.length === 0) {
-                list.innerHTML = '<li>Задач на сегодня нет</li>';
+                list.innerHTML = '<li style="justify-content: center; text-align: center; padding: 12px;">Задач на сегодня нет</li>';
                 return;
             }
             tasksToday.forEach(task => {
@@ -381,7 +455,11 @@
             const text = document.getElementById('taskInput').value.trim();
             const date = document.getElementById('dateInput').value;
             if (!text || !date) {
-                alert('Введите задание и дату');
+                const toast = document.getElementById('input-toast');
+                toast.classList.add('show');
+                setTimeout(() => {
+                    toast.classList.remove('show');
+                }, 2000);
                 return;
             }
             tasks.push({ id: Date.now(), text, date, completed: false });
@@ -423,6 +501,7 @@
             renderTodayTasks();
         });
     </script>
+    <div id="toast" class="toast">Введите задание и дату</div>
 </body>
 
 </html>

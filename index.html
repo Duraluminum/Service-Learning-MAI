@@ -132,15 +132,6 @@
             margin: 10px 0;
         }
 
-        .nc {
-            background-color: var(--input-bg);
-            border-radius: 15px;
-            padding: 8px;
-            font-size: 18px;
-            margin: 10px 0;
-            height: ;
-        }
-
         ul {
             list-style: none;
             padding: 0;
@@ -199,6 +190,20 @@
         .dm-small:hover {
             transform: scale(1.05);
         }
+
+        .knop {
+            width: 100%;
+            padding: 10px 0;
+            height: 65px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 5%;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+
 
         .dm-small {
             transition: all 300ms ease;
@@ -270,7 +275,7 @@
 </head>
 
 <body>
-    <div class="wrapper">
+    <!--- <div class="wrapper"> 
         <div class="nav">
             <div>
                 <img src="https://mai.ru/press/brand/download/Inverse/RU/Inverse.svg" alt="логотип" width="46"
@@ -278,14 +283,18 @@
             </div>
             <div class="logo">ПланДЗ</div>
         </div>
-    </div>
-
+    </div> >
+-->
     <div class="container">
         <!-- Страница: Задания на сегодня -->
         <div id="homePage">
-            <button class="dm-small" onclick="toggleDarkMode()" title="Переключить тему">
-                <img width="20" height="20" src="https://img.icons8.com/dusk/64/bright-moon.png" alt="тема">
-            </button>
+            <div class="knop">
+                <img src="https://mai.ru/press/brand/download/DefaultText/RU/Default_Text.svg" alt="логотип"
+                    width="70%">
+                <button class="dm-small" onclick="toggleDarkMode()" title="Переключить тему">
+                    <img width="20" height="20" src="https://img.icons8.com/dusk/64/bright-moon.png" alt="тема">
+                </button>
+            </div>
             <h1>Текущие задания</h1>
             <h3>Сегодня: <span id="todayDateDisplay"></span></h3>
             <ul id="todayTaskList">

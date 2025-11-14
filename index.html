@@ -453,7 +453,7 @@
             <div class="page-header">
                 <!-- Логотип слева -->
                 <div class="header-logo">
-                    <img src="images/MAI.png" alt="МАИ" width="100%">
+                    <img src="images/MAI.png" alt="МАИ" width="80%">
                 </div>
                 <!-- Кнопка темы справа -->
                 <button class="theme-toggle" onclick="toggleDarkMode()" title="Переключить тему">
@@ -464,7 +464,7 @@
             <h1>Текущие задания</h1>
             <h3>Сегодня: <span id="todayDateDisplay"></span></h3>
             <ul id="todayTaskList"></ul>
-            <button class="btn" onclick="goToAllTasksPage()">Список заданий</button>
+            <button class="btn" onclick="goToAllTasksPage()">Список всех заданий</button>
         </div>
 
         <!-- Страница 2: Все задания -->
@@ -547,7 +547,7 @@
             list.innerHTML = '';
             const tasksToday = tasks.filter(t => t.date === todayFormatted && !t.completed);
             if (tasksToday.length === 0) {
-                list.innerHTML = '<li style="justify-content: center; text-align: center; padding: 12px;">Задач на сегодня нет</li>';
+                list.innerHTML = '<li style="justify-content: center; text-align: center; padding: 12px;">Заданий на сегодня нет</li>';
                 return;
             }
             tasksToday.forEach(task => {

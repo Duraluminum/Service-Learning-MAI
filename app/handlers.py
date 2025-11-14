@@ -4,11 +4,13 @@ from aiogram.filters import CommandStart, Command
 from aiogram.exceptions import TelegramBadRequest
 
 import app.keyboards as kb
+from app.database.requests import add_user, toggle_notifications, get_user_notifications_enabled
 
 router = Router()
 
 @router.message(CommandStart())
 async def cmd_start(message: Message):
+    await add_user(message.from_user.id)
     await message.answer('Нажми на кнопку ниже, чтобы открыть веб-приложение', reply_markup=kb.start)
 
 
@@ -20,7 +22,10 @@ async def cmd_info(message: Message):
 
 @router.message(Command('settings'))
 async def cmd_settings(message: Message):
-    await message.answer('Выбери нужный тебе пункт ниже', reply_markup=kb.settings)
+    user = await add_user(message.from_user.id)
+    notifications_enabled = user.notifications
+    markup = kb.get_settings_keyboard(notifications_enabled)
+    await message.answer('Выбери нужный тебе пункт ниже', reply_markup=markup)
 
 
 @router.callback_query(F.data == 'go_back_to_info')
@@ -40,34 +45,24 @@ async def bot_settings(callback: CallbackQuery):
 
 @router.callback_query(F.data == 'go_to_settings')
 async def bot_settings(callback: CallbackQuery):
-    await callback.message.edit_text(text='Выбери нужный тебе пункт ниже', reply_markup=kb.settings)
+    tg_id = callback.from_user.id
+    notifications_enabled = await get_user_notifications_enabled(tg_id)
+    markup = kb.get_settings_keyboard(notifications_enabled)
+    await callback.message.edit_text(text='Выбери нужный тебе пункт ниже', reply_markup=markup)
     await callback.answer()
 
 
-@router.callback_query((F.data == 'disable_notifications') | (F.data == 'enable_notifications'))
-async def toggle_notifications(callback: CallbackQuery):
-    current_markup = callback.message.reply_markup
-
-    new_keyboard = []
-    for row in current_markup.inline_keyboard:
-        new_row = []
-        for button in row:
-            if button.callback_data == 'disable_notifications':
-                new_button = InlineKeyboardButton(text='Включить уведомления', callback_data='enable_notifications')
-
-            elif button.callback_data == 'enable_notifications':
-                new_button = InlineKeyboardButton(text='Выключить уведомления', callback_data='disable_notifications')
-            else:
-                new_button = button
-            new_row.append(new_button)
-        new_keyboard.append(new_row)
-
-    new_markup = InlineKeyboardMarkup(inline_keyboard=new_keyboard)
-
+@router.callback_query(F.data.in_({'disable_notifications', 'enable_notifications'}))
+async def toggle_notifications_handler(callback: CallbackQuery):
+    tg_id = callback.from_user.id
+    new_state = await toggle_notifications(tg_id)
+    markup = kb.get_settings_keyboard(new_state)
+    
     try:
-        await callback.message.edit_reply_markup(reply_markup=new_markup)
+        await callback.message.edit_reply_markup(reply_markup=markup)
     except TelegramBadRequest as e:
         if 'message is not modified' not in str(e):
             raise
 
-    await callback.answer('Настройки уведомлений обновлены')
+    status_text = 'включены' if new_state else 'отключены'
+    await callback.answer(f'Уведомления {status_text}')

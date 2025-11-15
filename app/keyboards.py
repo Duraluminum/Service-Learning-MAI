@@ -19,3 +19,7 @@ start = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text='Отк
 
 info = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text='Перейти в настройки', 
                                                                    callback_data='go_to_settings')]])
+
+
+homework = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text='Открыть веб-приложение', 
+                                                    web_app=WebAppInfo(url='https://duraluminum.github.io/Service-Learning-MAI/index.html'))]])

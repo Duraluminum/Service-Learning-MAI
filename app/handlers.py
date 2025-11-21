@@ -57,9 +57,10 @@ async def toggle_notifications_handler(callback: CallbackQuery):
     tg_id = callback.from_user.id
     new_state = await toggle_notifications(tg_id)
     markup = kb.get_settings_keyboard(new_state)
-    
+    current_text = callback.message.text
+
     try:
-        await callback.message.edit_reply_markup(reply_markup=markup)
+        await callback.message.edit_text(text=current_text, reply_markup=markup)
     except TelegramBadRequest as e:
         if 'message is not modified' not in str(e):
             raise

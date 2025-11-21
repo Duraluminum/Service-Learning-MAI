@@ -491,25 +491,21 @@
         </div>
     </div>
 
-
     <script>
-        // === Telegram WebApp проверка (без изменения структуры страниц) ===
+        // === Telegram: безопасная проверка ===
         const tg = window.Telegram?.WebApp;
-        if (!tg || !tg.initDataUnsafe?.user) {
-            // Если не в Telegram — показываем всё, но без данных (как локальный сайт)
-            // Но по заданию — должно работать в Telegram, поэтому можно оставить как есть.
-            // Для безопасности: можно показать ошибку, но ты просил не менять оформление.
-            // Поэтому просто работаем "как обычно", но без Telegram-функций.
-            // Но в реальности, если нет tg.user — мы не можем работать с API.
-            // Поэтому в настоящем релизе лучше остановить выполнение.
-            alert("Это приложение работает только внутри Telegram!");
-            throw new Error("Not in Telegram WebApp");
+        let tgId = null;
+
+        if (tg && tg.initDataUnsafe?.user) {
+            tgId = tg.initDataUnsafe.user.id;
+        } else {
+            // Показываем предупреждение, но НЕ останавливаем скрипт
+            console.warn("Приложение запущено не в Telegram — данные будут только локальными");
+            // Можно показать баннер, но по заданию — не менять оформление, поэтому просто работаем без API
         }
 
         const API_URL = "https://service-learning-mai-production.up.railway.app";
-        const tgId = tg.initDataUnsafe.user.id;
 
-        // === Оригинальные функции из первого кода — НЕ МЕНЯЕМ их названия и логику ===
         function formatDate(date) {
             const year = date.getFullYear();
             const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -517,31 +513,34 @@
             return `${year}-${month}-${day}`;
         }
 
-        // Убираем функцию isTaskExpired — сервер сам управляет актуальностью
         const today = new Date();
         const todayFormatted = formatDate(today);
         document.getElementById('todayDateDisplay').textContent = today.toLocaleDateString('ru-RU');
+        document.getElementById('dateInput').value = todayFormatted;
 
-        // БОЛЬШОЕ ИЗМЕНЕНИЕ: вместо localStorage — API
         let tasks = [];
 
+        // === Работа с API (только если есть tgId) ===
         async function syncTasksFromServer() {
+            if (!tgId) return; // не в Telegram — не грузим с сервера
             try {
                 const res = await fetch(`${API_URL}/tasks/${tgId}`);
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
                 const data = await res.json();
                 tasks = data.map(t => ({
                     id: t.id,
                     text: t.title,
                     date: t.deadline,
-                    completed: false // в этой логике completed = удаление
+                    completed: false
                 }));
             } catch (err) {
-                console.error("Ошибка загрузки задач", err);
-                tasks = [];
+                console.error("Ошибка загрузки задач:", err);
+                // Не падаем — просто оставляем tasks пустым
             }
         }
 
         async function saveTaskToServer(task) {
+            if (!tgId) return;
             try {
                 await fetch(`${API_URL}/tasks/`, {
                     method: 'POST',
@@ -553,19 +552,22 @@
                     })
                 });
             } catch (err) {
-                console.error("Ошибка сохранения задачи", err);
+                console.error("Ошибка сохранения:", err);
+                alert("Не удалось сохранить задание. Проверьте подключение.");
             }
         }
 
         async function deleteTaskOnServer(id) {
+            if (!tgId) return;
             try {
                 await fetch(`${API_URL}/tasks/${id}`, { method: 'DELETE' });
             } catch (err) {
-                console.error("Ошибка удаления задачи", err);
+                console.error("Ошибка удаления:", err);
+                alert("Не удалось удалить задание.");
             }
         }
 
-        // === ОРИГИНАЛЬНЫЕ ФУНКЦИИ НАВИГАЦИИ — БЕЗ ИЗМЕНЕНИЙ В ЛОГИКЕ ===
+        // === ОСТАЛЬНОЙ КОД БЕЗ ИЗМЕНЕНИЙ ===
         function goToAllTasksPage() {
             document.getElementById('homePage').style.display = 'none';
             document.getElementById('allTasksPage').style.display = 'block';
@@ -579,7 +581,6 @@
             renderTodayTasks();
         }
 
-        // === РЕНДЕРЫ — теперь используют tasks из памяти (полученные с сервера) ===
         function renderTodayTasks() {
             const list = document.getElementById('todayTaskList');
             list.innerHTML = '';
@@ -632,39 +633,32 @@
             tasks.push(newTask);
             saveTaskToServer(newTask);
             document.getElementById('taskInput').value = '';
-            document.getElementById('dateInput').value = todayFormatted;
             renderAllTasks();
+            // Не обновляем сегодня, потому что задача может быть не на сегодня
         }
 
         async function toggleTaskCompleted(id) {
-            // В логике Telegram — галочка = удаление
             tasks = tasks.filter(t => t.id !== id);
             await deleteTaskOnServer(id);
             renderTodayTasks();
             renderAllTasks();
         }
 
-        // === ПЕРЕКЛЮЧЕНИЕ ТЕМЫ — БЕЗ ИЗМЕНЕНИЙ ===
+        // === Тема ===
         function toggleDarkMode() {
             document.body.classList.toggle('dark-mode');
             const isDark = document.body.classList.contains('dark-mode');
             localStorage.setItem('darkModeEnabled', isDark);
-
-            // Меняем иконку у ВСЕХ кнопок темы
             document.querySelectorAll('.theme-toggle img').forEach(img => {
-                img.src = isDark
-                    ? "images/sun.png"
-                    : "images/moon.png";
+                img.src = isDark ? "images/sun.png" : "images/moon.png";
                 img.alt = isDark ? "Светлая тема" : "Тёмная тема";
             });
-
             renderTodayTasks();
             renderAllTasks();
         }
 
         function loadDarkModeSetting() {
-            const isDark = localStorage.getItem('darkModeEnabled') === 'true';
-            if (isDark) {
+            if (localStorage.getItem('darkModeEnabled') === 'true') {
                 document.body.classList.add('dark-mode');
                 document.querySelectorAll('.theme-toggle img').forEach(img => {
                     img.src = "images/sun.png";
@@ -672,11 +666,10 @@
                 });
             }
         }
-
         // === ИНИЦИАЛИЗАЦИЯ ===
         document.addEventListener('DOMContentLoaded', async () => {
             loadDarkModeSetting();
-            await syncTasksFromServer();
+            await syncTasksFromServer(); // загрузит данные, если в Telegram
             renderTodayTasks();
         });
     </script>

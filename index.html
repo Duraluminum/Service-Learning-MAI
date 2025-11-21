@@ -636,7 +636,7 @@
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        tg_id: tgId,
+                        tg_id: Number(tgId),
                         title: text,
                         deadline: date
                     })

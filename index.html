@@ -515,28 +515,18 @@
             return `${year}-${month}-${day}`;
         }
 
-        const today = new Date();
-        const todayFormatted = formatDate(today);
-        document.getElementById('todayDateDisplay').textContent = today.toLocaleDateString('ru-RU');
-        document.getElementById('dateInput').value = todayFormatted;
+
 
         let tasks = [];
+        let todayFormatted = '';
 
         // === Загрузка задач с сервера ===
         async function syncTasksFromServer() {
             if (!tgId) return;
-
             try {
                 const res = await fetch(`${API_URL}/tasks/${tgId}`);
-                if (!res.ok) {
-                    if (res.status === 404) {
-                        tasks = []; // пользователь без задач — нормально
-                        return;
-                    }
-                    throw new Error(`Ошибка сервера: ${res.status}`);
-                }
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
                 const data = await res.json();
-                // Убедимся, что data — массив
                 tasks = Array.isArray(data) ? data.map(t => ({
                     id: t.id,
                     text: t.title || t.text,
@@ -544,9 +534,8 @@
                     completed: false
                 })) : [];
             } catch (err) {
-                console.error("❌ Не удалось загрузить задачи:", err);
+                console.error("Ошибка загрузки:", err);
                 tasks = [];
-                // Не показываем алерт — чтобы не мешать пользователю
             }
         }
 
@@ -554,17 +543,14 @@
         async function addTask() {
             const text = document.getElementById('taskInput').value.trim();
             const date = document.getElementById('dateInput').value;
-
             if (!text || !date) {
                 const toast = document.getElementById('input-toast');
                 toast.classList.add('show');
                 setTimeout(() => toast.classList.remove('show'), 2000);
                 return;
             }
-
-            // Только в Telegram можно добавлять задачи
             if (!tgId) {
-                alert("⚠️ Добавление задач доступно только в Telegram!");
+                alert("Только в Telegram!");
                 return;
             }
 
@@ -572,69 +558,74 @@
             document.getElementById('taskInput').value = '';
 
             try {
-                // Отправляем запрос
                 const response = await fetch(`${API_URL}/tasks/`, {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        // Без этого заголовка сервер может не принять JSON
-                    },
-                    body: JSON.stringify({
-                        tg_id: tgId,      // число, как и должно быть
-                        title: text,
-                        deadline: date    // строка в формате YYYY-MM-DD
-                    })
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ tg_id: tgId, title: text, deadline: date })
                 });
 
                 if (!response.ok) {
-                    // Получаем тело ошибки для логирования
-                    let errorMsg = `HTTP ${response.status}`;
-                    try {
-                        const errorJson = await response.json();
-                        errorMsg += `: ${JSON.stringify(errorJson)}`;
-                    } catch (e) {
-                        // Если не JSON — читаем как текст
-                        const errorText = await response.text();
-                        errorMsg += `: ${errorText}`;
-                    }
-                    throw new Error(errorMsg);
+                    const errorText = await response.text();
+                    throw new Error(`Сервер: ${errorText || response.status}`);
                 }
 
-                // УСПЕШНО: перезагружаем список задач с сервера
                 await syncTasksFromServer();
                 renderAllTasks();
-                if (date === todayFormatted) {
-                    renderTodayTasks();
-                }
+                if (date === todayFormatted) renderTodayTasks();
 
             } catch (err) {
-                console.error("💥 Ошибка при добавлении задачи:", err);
-                alert("❌ Не удалось сохранить задание. Сервер вернул ошибку.");
-                // Восстанавливаем текст для удобства
+                console.error("Ошибка добавления:", err);
+                alert("Не удалось сохранить задание.");
                 document.getElementById('taskInput').value = originalText;
             }
         }
 
-        // === Удаление задачи ===
         async function toggleTaskCompleted(id) {
             if (!tgId) return;
-
             try {
-                const response = await fetch(`${API_URL}/tasks/${id}`, {
-                    method: 'DELETE'
-                });
-                if (!response.ok) throw new Error(`HTTP ${response.status}`);
-
+                await fetch(`${API_URL}/tasks/${id}`, { method: 'DELETE' });
                 await syncTasksFromServer();
                 renderTodayTasks();
                 renderAllTasks();
             } catch (err) {
-                console.error("Ошибка удаления:", err);
-                alert("❌ Не удалось удалить задание.");
+                alert("Не удалось удалить задание.");
             }
         }
 
-        // === Рендеринг (без изменений) ===
+        function renderTodayTasks() {
+            const list = document.getElementById('todayTaskList');
+            list.innerHTML = '';
+            const tasksToday = tasks.filter(t => t.date === todayFormatted);
+            if (tasksToday.length === 0) {
+                list.innerHTML = '<li style="justify-content:center;text-align:center;padding:12px;">Заданий на сегодня нет</li>';
+                return;
+            }
+            tasksToday.forEach(task => {
+                const li = document.createElement('li');
+                li.classList.add('task-item');
+                li.innerHTML = `<span>${task.text}</span><input type="checkbox" onchange="toggleTaskCompleted(${task.id})">`;
+                list.appendChild(li);
+            });
+        }
+
+        function renderAllTasks() {
+            const list = document.getElementById('allTaskList');
+            list.innerHTML = '';
+            const sorted = [...tasks].sort((a, b) => new Date(a.date) - new Date(b.date));
+            sorted.forEach(task => {
+                const li = document.createElement('li');
+                li.classList.add('task-item');
+                li.innerHTML = `
+                        <span>${task.text}</span>
+                        <div>
+                            <span class="task-date-display">${new Date(task.date).toLocaleDateString('ru-RU')}</span>
+                            <input type="checkbox" onchange="toggleTaskCompleted(${task.id})">
+                        </div>
+                    `;
+                list.appendChild(li);
+            });
+        }
+
         function goToAllTasksPage() {
             document.getElementById('homePage').style.display = 'none';
             document.getElementById('allTasksPage').style.display = 'block';
@@ -648,44 +639,6 @@
             renderTodayTasks();
         }
 
-        function renderTodayTasks() {
-            const list = document.getElementById('todayTaskList');
-            list.innerHTML = '';
-            const tasksToday = tasks.filter(t => t.date === todayFormatted);
-            if (tasksToday.length === 0) {
-                list.innerHTML = '<li style="justify-content: center; text-align: center; padding: 12px;">Заданий на сегодня нет</li>';
-                return;
-            }
-            tasksToday.forEach(task => {
-                const li = document.createElement('li');
-                li.classList.add('task-item');
-                li.innerHTML = `
-                    <span>${task.text}</span>
-                    <input type="checkbox" onchange="toggleTaskCompleted(${task.id})">
-                `;
-                list.appendChild(li);
-            });
-        }
-
-        function renderAllTasks() {
-            const list = document.getElementById('allTaskList');
-            list.innerHTML = '';
-            const sorted = [...tasks].sort((a, b) => new Date(a.date) - new Date(b.date));
-            sorted.forEach(task => {
-                const li = document.createElement('li');
-                li.classList.add('task-item');
-                li.innerHTML = `
-                    <span>${task.text}</span>
-                    <div>
-                        <span class="task-date-display">${new Date(task.date).toLocaleDateString('ru-RU')}</span>
-                        <input type="checkbox" onchange="toggleTaskCompleted(${task.id})">
-                    </div>
-                `;
-                list.appendChild(li);
-            });
-        }
-
-        // === Тема (без изменений) ===
         function toggleDarkMode() {
             document.body.classList.toggle('dark-mode');
             const isDark = document.body.classList.contains('dark-mode');
@@ -708,12 +661,20 @@
             }
         }
 
-        // === Инициализация ===
+        // ✅ КРИТИЧЕСКИ ВАЖНО: инициализация после загрузки DOM
         document.addEventListener('DOMContentLoaded', async () => {
+            // 1. Устанавливаем дату — ДО всего остального
+            const today = new Date();
+            todayFormatted = formatDate(today);
+            document.getElementById('todayDateDisplay').textContent = today.toLocaleDateString('ru-RU');
+            document.getElementById('dateInput').value = todayFormatted;
+
+            // 2. Загружаем настройки и задачи
             loadDarkModeSetting();
             await syncTasksFromServer();
             renderTodayTasks();
         });
+
     </script>
 
 </body>

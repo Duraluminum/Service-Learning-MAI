@@ -4,16 +4,15 @@ from aiogram import Dispatcher
 
 from app.handlers import router
 from app.database.models import init_db
-from app.notifications import send_reminders
+from app.notifications import send_daily_reminders
 from app.bot import bot
 
 
 async def main():
     await init_db()
-
     dp = Dispatcher()
     dp.include_router(router)
-    asyncio.create_task(send_reminders())
+    asyncio.create_task(send_daily_reminders())
     await dp.start_polling(bot)
 
 

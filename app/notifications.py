@@ -44,7 +44,7 @@ async def send_reminders():
                     else:
                         day_word = "дней"
                     task_lines.append(
-                        f'- Задание "{task.title}" нужно сдать через {days} {day_word} (на {deadline_date.strftime("%d.%m.%Y")})'
+                        f'- Задание "{task.title}" нужно сдать через {days} {day_word}\n(на {deadline_date.strftime("%d.%m.%Y")})'
                     )
 
                 msg = '❗ У тебя есть невыполненные задания:\n\n' + '\n'.join(task_lines)

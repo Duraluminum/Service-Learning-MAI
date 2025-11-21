@@ -492,20 +492,22 @@
     </div>
 
     <script>
-        // === Telegram: безопасная проверка ===
+        // === Инициализация Telegram WebApp ===
         const tg = window.Telegram?.WebApp;
         let tgId = null;
 
-        if (tg && tg.initDataUnsafe?.user) {
+        if (tg?.initDataUnsafe?.user) {
             tgId = tg.initDataUnsafe.user.id;
+            // Инициализируем WebApp правильно
+            tg.expand(); // раскрываем на всю высоту
         } else {
-            // Показываем предупреждение, но НЕ останавливаем скрипт
-            console.warn("Приложение запущено не в Telegram — данные будут только локальными");
-            // Можно показать баннер, но по заданию — не менять оформление, поэтому просто работаем без API
+            console.warn("⚠️ Запущено не в Telegram. Работа с задачами будет ограничена.");
+            // Не выходим — позволяем смотреть, но не редактировать
         }
 
         const API_URL = "https://service-learning-mai-production.up.railway.app";
 
+        // === Вспомогательные функции ===
         function formatDate(date) {
             const year = date.getFullYear();
             const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -520,54 +522,119 @@
 
         let tasks = [];
 
-        // === Работа с API (только если есть tgId) ===
+        // === Загрузка задач с сервера ===
         async function syncTasksFromServer() {
-            if (!tgId) return; // не в Telegram — не грузим с сервера
+            if (!tgId) return;
+
             try {
                 const res = await fetch(`${API_URL}/tasks/${tgId}`);
-                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                if (!res.ok) {
+                    if (res.status === 404) {
+                        tasks = []; // пользователь без задач — нормально
+                        return;
+                    }
+                    throw new Error(`Ошибка сервера: ${res.status}`);
+                }
                 const data = await res.json();
-                tasks = data.map(t => ({
+                // Убедимся, что data — массив
+                tasks = Array.isArray(data) ? data.map(t => ({
                     id: t.id,
-                    text: t.title,
-                    date: t.deadline,
+                    text: t.title || t.text,
+                    date: t.deadline || t.date,
                     completed: false
-                }));
+                })) : [];
             } catch (err) {
-                console.error("Ошибка загрузки задач:", err);
-                // Не падаем — просто оставляем tasks пустым
+                console.error("❌ Не удалось загрузить задачи:", err);
+                tasks = [];
+                // Не показываем алерт — чтобы не мешать пользователю
             }
         }
 
-        async function saveTaskToServer(task) {
-            if (!tgId) return;
+        // === Добавление задачи (ключевое исправление) ===
+        async function addTask() {
+            const text = document.getElementById('taskInput').value.trim();
+            const date = document.getElementById('dateInput').value;
+
+            if (!text || !date) {
+                const toast = document.getElementById('input-toast');
+                toast.classList.add('show');
+                setTimeout(() => toast.classList.remove('show'), 2000);
+                return;
+            }
+
+            // Только в Telegram можно добавлять задачи
+            if (!tgId) {
+                alert("⚠️ Добавление задач доступно только в Telegram!");
+                return;
+            }
+
+            const originalText = text;
+            document.getElementById('taskInput').value = '';
+
             try {
-                await fetch(`${API_URL}/tasks/`, {
+                // Отправляем запрос
+                const response = await fetch(`${API_URL}/tasks/`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: {
+                        'Content-Type': 'application/json',
+                        // Без этого заголовка сервер может не принять JSON
+                    },
                     body: JSON.stringify({
-                        tg_id: tgId,
-                        title: task.text,
-                        deadline: task.date
+                        tg_id: tgId,      // число, как и должно быть
+                        title: text,
+                        deadline: date    // строка в формате YYYY-MM-DD
                     })
                 });
+
+                if (!response.ok) {
+                    // Получаем тело ошибки для логирования
+                    let errorMsg = `HTTP ${response.status}`;
+                    try {
+                        const errorJson = await response.json();
+                        errorMsg += `: ${JSON.stringify(errorJson)}`;
+                    } catch (e) {
+                        // Если не JSON — читаем как текст
+                        const errorText = await response.text();
+                        errorMsg += `: ${errorText}`;
+                    }
+                    throw new Error(errorMsg);
+                }
+
+                // УСПЕШНО: перезагружаем список задач с сервера
+                await syncTasksFromServer();
+                renderAllTasks();
+                if (date === todayFormatted) {
+                    renderTodayTasks();
+                }
+
             } catch (err) {
-                console.error("Ошибка сохранения:", err);
-                alert("Не удалось сохранить задание. Проверьте подключение.");
+                console.error("💥 Ошибка при добавлении задачи:", err);
+                alert("❌ Не удалось сохранить задание. Сервер вернул ошибку.");
+                // Восстанавливаем текст для удобства
+                document.getElementById('taskInput').value = originalText;
             }
         }
 
-        async function deleteTaskOnServer(id) {
+        // === Удаление задачи ===
+        async function toggleTaskCompleted(id) {
             if (!tgId) return;
+
             try {
-                await fetch(`${API_URL}/tasks/${id}`, { method: 'DELETE' });
+                const response = await fetch(`${API_URL}/tasks/${id}`, {
+                    method: 'DELETE'
+                });
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+                await syncTasksFromServer();
+                renderTodayTasks();
+                renderAllTasks();
             } catch (err) {
                 console.error("Ошибка удаления:", err);
-                alert("Не удалось удалить задание.");
+                alert("❌ Не удалось удалить задание.");
             }
         }
 
-        // === ОСТАЛЬНОЙ КОД БЕЗ ИЗМЕНЕНИЙ ===
+        // === Рендеринг (без изменений) ===
         function goToAllTasksPage() {
             document.getElementById('homePage').style.display = 'none';
             document.getElementById('allTasksPage').style.display = 'block';
@@ -617,101 +684,8 @@
                 list.appendChild(li);
             });
         }
-        async function addTask() {
-            const text = document.getElementById('taskInput').value.trim();
-            const date = document.getElementById('dateInput').value;
-            if (!text || !date) {
-                const toast = document.getElementById('input-toast');
-                toast.classList.add('show');
-                setTimeout(() => toast.classList.remove('show'), 2000);
-                return;
-            }
 
-            const originalText = text;
-            document.getElementById('taskInput').value = '';
-
-            try {
-                const response = await fetch(`${API_URL}/tasks/`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        tg_id: tgId,
-                        title: text,
-                        deadline: date
-                    })
-                });
-
-                if (!response.ok) {
-                    const errorText = await response.text();
-                    console.error("Ошибка сервера:", errorText);
-                    throw new Error(`Сервер ответил: ${response.status}`);
-                }
-
-                // ВМЕСТО обработки ответа — просто перезагружаем ВСЕ задачи
-                await syncTasksFromServer();
-                renderAllTasks();
-                if (date === todayFormatted) {
-                    renderTodayTasks();
-                }
-
-            } catch (err) {
-                console.error("Не удалось добавить задачу:", err);
-                alert("Не удалось сохранить задание. Попробуйте снова.");
-                document.getElementById('taskInput').value = originalText;
-            }
-        }
-
-        // Очищаем поле сразу (UX)
-        document.getElementById('taskInput').value = '';
-
-        try {
-            const response = await fetch(`${API_URL}/tasks/`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    tg_id: tgId,
-                    title: text,
-                    deadline: date
-                })
-            });
-
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status}`);
-            }
-
-            // Получаем данные новой задачи от сервера
-            const newTask = await response.json();
-
-            // Добавляем задачу в локальный список с настоящим ID от сервера
-            tasks.push({
-                id: newTask.id,        // ← важно: используем ID от сервера!
-                text: newTask.title,
-                date: newTask.deadline,
-                completed: false
-            });
-
-            renderAllTasks();
-            // Обновим "сегодня", если задача на сегодня
-            if (date === todayFormatted) {
-                renderTodayTasks();
-            }
-
-        } catch (err) {
-            console.error("Ошибка добавления задачи:", err);
-            alert("Не удалось сохранить задание. Попробуйте снова.");
-            // Восстанавливаем текст (опционально)
-            document.getElementById('taskInput').value = text;
-        }
-
-
-        async function toggleTaskCompleted(id) {
-            tasks = tasks.filter(t => t.id !== id);
-            await deleteTaskOnServer(id);
-            renderTodayTasks();
-            renderAllTasks();
-        }
-
-        // === Тема ===
+        // === Тема (без изменений) ===
         function toggleDarkMode() {
             document.body.classList.toggle('dark-mode');
             const isDark = document.body.classList.contains('dark-mode');
@@ -733,13 +707,15 @@
                 });
             }
         }
-        // === ИНИЦИАЛИЗАЦИЯ ===
+
+        // === Инициализация ===
         document.addEventListener('DOMContentLoaded', async () => {
             loadDarkModeSetting();
-            await syncTasksFromServer(); // загрузит данные, если в Telegram
+            await syncTasksFromServer();
             renderTodayTasks();
         });
     </script>
+
 </body>
 
 </html>

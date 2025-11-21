@@ -619,6 +619,8 @@
         }
 
         async function addTask() {
+            const newTask = await response.json();
+            console.log("Ответ сервера:", newTask); // ← ОТКРОЙТЕ ЭТО В DEVTOOLS
             const text = document.getElementById('taskInput').value.trim();
             const date = document.getElementById('dateInput').value;
             if (!text || !date) {

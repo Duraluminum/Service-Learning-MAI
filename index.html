@@ -618,23 +618,57 @@
             });
         }
 
-        function addTask() {
+        async function addTask() {
             const text = document.getElementById('taskInput').value.trim();
             const date = document.getElementById('dateInput').value;
             if (!text || !date) {
                 const toast = document.getElementById('input-toast');
                 toast.classList.add('show');
-                setTimeout(() => {
-                    toast.classList.remove('show');
-                }, 2000);
+                setTimeout(() => toast.classList.remove('show'), 2000);
                 return;
             }
-            const newTask = { id: Date.now(), text, date, completed: false };
-            tasks.push(newTask);
-            saveTaskToServer(newTask);
+
+            // Очищаем поле сразу (UX)
             document.getElementById('taskInput').value = '';
-            renderAllTasks();
-            // Не обновляем сегодня, потому что задача может быть не на сегодня
+
+            try {
+                const response = await fetch(`${API_URL}/tasks/`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        tg_id: tgId,
+                        title: text,
+                        deadline: date
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+
+                // Получаем данные новой задачи от сервера
+                const newTask = await response.json();
+
+                // Добавляем задачу в локальный список с настоящим ID от сервера
+                tasks.push({
+                    id: newTask.id,        // ← важно: используем ID от сервера!
+                    text: newTask.title,
+                    date: newTask.deadline,
+                    completed: false
+                });
+
+                renderAllTasks();
+                // Обновим "сегодня", если задача на сегодня
+                if (date === todayFormatted) {
+                    renderTodayTasks();
+                }
+
+            } catch (err) {
+                console.error("Ошибка добавления задачи:", err);
+                alert("Не удалось сохранить задание. Попробуйте снова.");
+                // Восстанавливаем текст (опционально)
+                document.getElementById('taskInput').value = text;
+            }
         }
 
         async function toggleTaskCompleted(id) {

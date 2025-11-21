@@ -617,10 +617,7 @@
                 list.appendChild(li);
             });
         }
-
         async function addTask() {
-            const newTask = await response.json();
-            console.log("Ответ сервера:", newTask); // ← ОТКРОЙТЕ ЭТО В DEVTOOLS
             const text = document.getElementById('taskInput').value.trim();
             const date = document.getElementById('dateInput').value;
             if (!text || !date) {
@@ -630,7 +627,7 @@
                 return;
             }
 
-            // Очищаем поле сразу (UX)
+            const originalText = text;
             document.getElementById('taskInput').value = '';
 
             try {
@@ -638,39 +635,73 @@
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        tg_id: Number(tgId),
+                        tg_id: tgId,
                         title: text,
                         deadline: date
                     })
                 });
 
                 if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}`);
+                    const errorText = await response.text();
+                    console.error("Ошибка сервера:", errorText);
+                    throw new Error(`Сервер ответил: ${response.status}`);
                 }
 
-                // Получаем данные новой задачи от сервера
-                const newTask = await response.json();
-
-                // Добавляем задачу в локальный список с настоящим ID от сервера
-                tasks.push({
-                    id: newTask.id,        // ← важно: используем ID от сервера!
-                    text: newTask.title,
-                    date: newTask.deadline,
-                    completed: false
-                });
-
+                // ВМЕСТО обработки ответа — просто перезагружаем ВСЕ задачи
+                await syncTasksFromServer();
                 renderAllTasks();
-                // Обновим "сегодня", если задача на сегодня
                 if (date === todayFormatted) {
                     renderTodayTasks();
                 }
 
             } catch (err) {
-                console.error("Ошибка добавления задачи:", err);
+                console.error("Не удалось добавить задачу:", err);
                 alert("Не удалось сохранить задание. Попробуйте снова.");
-                // Восстанавливаем текст (опционально)
-                document.getElementById('taskInput').value = text;
+                document.getElementById('taskInput').value = originalText;
             }
+        }
+
+        // Очищаем поле сразу (UX)
+        document.getElementById('taskInput').value = '';
+
+        try {
+            const response = await fetch(`${API_URL}/tasks/`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    tg_id: Number(tgId),
+                    title: text,
+                    deadline: date
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}`);
+            }
+
+            // Получаем данные новой задачи от сервера
+            const newTask = await response.json();
+
+            // Добавляем задачу в локальный список с настоящим ID от сервера
+            tasks.push({
+                id: newTask.id,        // ← важно: используем ID от сервера!
+                text: newTask.title,
+                date: newTask.deadline,
+                completed: false
+            });
+
+            renderAllTasks();
+            // Обновим "сегодня", если задача на сегодня
+            if (date === todayFormatted) {
+                renderTodayTasks();
+            }
+
+        } catch (err) {
+            console.error("Ошибка добавления задачи:", err);
+            alert("Не удалось сохранить задание. Попробуйте снова.");
+            // Восстанавливаем текст (опционально)
+            document.getElementById('taskInput').value = text;
+        }
         }
 
         async function toggleTaskCompleted(id) {

@@ -4,12 +4,7 @@ from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 from sqlalchemy.ext.asyncio import AsyncAttrs, async_sessionmaker, create_async_engine
 
 
-DATABASE_URL = os.getenv("DATABASE_URL", "sqlite+aiosqlite:///./test.db")
-
-if DATABASE_URL.startswith("postgresql://"):
-    DATABASE_URL = DATABASE_URL.replace("postgresql://", "postgresql+asyncpg://", 1)
-else:
-    DATABASE_URL = "sqlite+aiosqlite:///./db.sqlite3"
+DATABASE_URL = 'postgresql://postgres:gyGHqfYAenjsYVeWQAtPcMiJFPQWGRkV@switchback.proxy.rlwy.net:33382/railway'
 
 engine = create_async_engine(DATABASE_URL, echo=True, future=True)
 async_session = async_sessionmaker(bind=engine, expire_on_commit=False)

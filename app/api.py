@@ -1,10 +1,21 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from typing import List
 from app.database.requests import add_user, get_active_tasks, create_task, delete_task
+from app.database.models import init_db
+from contextlib import asynccontextmanager
 
-app = FastAPI()
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    await init_db()
+    yield
+
+app = FastAPI(lifespan=lifespan)
+
+@app.on_event("startup")
+async def startup_event():
+    await init_db()
 
 app.add_middleware(
     CORSMiddleware,

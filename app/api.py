@@ -5,7 +5,6 @@ from app.database.requests import add_user, get_active_tasks, create_task, delet
 from app.database.models import init_db
 from contextlib import asynccontextmanager
 
-
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     await init_db()
@@ -13,9 +12,15 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 
+# Обновите CORS для GitHub Pages
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=['https://duraluminum.github.io', 'https://t.me', 'https://web.telegram.org'],
+    allow_origins=[
+        'https://duraluminum.github.io',
+        'https://t.me', 
+        'https://web.telegram.org',
+        'http://localhost:3000'
+    ],
     allow_credentials=True,
     allow_methods=['*'],
     allow_headers=['*'],
@@ -25,6 +30,10 @@ class TaskCreate(BaseModel):
     tg_id: int
     title: str
     deadline: str  # YYYY-MM-DD
+
+@app.get('/')
+async def root():
+    return {'status': 'ok', 'service': 'Telegram Bot API'}
 
 @app.post('/user/init')
 async def init_user(tg_id: int):

@@ -1,3 +1,4 @@
+import asyncio
 import os
 from sqlalchemy import ForeignKey, String, BigInteger
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
@@ -38,5 +39,27 @@ class Task(Base):
 
 
 async def init_db():
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+    """Инициализация базы данных с повторными попытками"""
+    max_retries = 3
+    for attempt in range(max_retries):
+        try:
+            async with engine.begin() as conn:
+                await conn.run_sync(Base.metadata.create_all)
+            print("✅ База данных успешно инициализирована")
+            return
+        except Exception as e:
+            print(f"❌ Попытка {attempt + 1}/{max_retries} не удалась: {e}")
+            if attempt < max_retries - 1:
+                await asyncio.sleep(2)
+            else:
+                raise e
+
+# Автоматическая инициализация при импорте (для Railway)
+async def initialize_on_startup():
+    """Функция для принудительной инициализации"""
+    await init_db()
+
+# Запуск инициализации при импорте в production
+if os.getenv("RAILWAY_ENVIRONMENT"):
+    print("🚀 Railway environment detected, initializing database...")
+    asyncio.run(initialize_on_startup())

@@ -2,17 +2,18 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from app.database.requests import add_user, get_active_tasks, create_task, delete_task
-from app.database.models import init_db
+from app.database.models import init_db, initialize_on_startup
 from contextlib import asynccontextmanager
+import asyncio
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # Принудительная инициализация базы при запуске
     await init_db()
     yield
 
 app = FastAPI(lifespan=lifespan)
 
-# Обновите CORS для GitHub Pages
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[

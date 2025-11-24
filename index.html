@@ -494,15 +494,30 @@
     <script>
         // === Инициализация Telegram WebApp ===
         const tg = window.Telegram?.WebApp;
+
         let tgId = null;
 
-        if (tg?.initDataUnsafe?.user) {
-            tgId = tg.initDataUnsafe.user.id;
-            // Инициализируем WebApp правильно
+        if (tg) {
             tg.expand(); // раскрываем на всю высоту
-        } else {
-            console.warn("⚠️ Запущено не в Telegram. Работа с задачами будет ограничена.");
-            // Не выходим — позволяем смотреть, но не редактировать
+            tg.ready();  // говорим Telegram, что приложение готово
+
+            // Попробуем получить tg_id из initDataUnsafe
+            try {
+                const initDataUnsafe = tg.initDataUnsafe;
+                if (initDataUnsafe && initDataUnsafe.user && initDataUnsafe.user.id) {
+                    tgId = String(initDataUnsafe.user.id); // важно: tg_id в API — строка!
+                } else if (initDataUnsafe && initDataUnsafe.query_id) {
+                    // Пользователь запустил через start, но без user? Маловероятно, но...
+                    console.warn("User data отсутствует в initDataUnsafe");
+                }
+            } catch (e) {
+                console.error("Ошибка при чтении initDataUnsafe", e);
+            }
+        }
+
+        if (!tgId) {
+            console.warn("⚠️ Не удалось получить tg_id. Возможно, запущено не в Telegram WebApp.");
+            // Не блокируем просмотр, но блокируем запись
         }
 
         const API_URL = "https://service-learning-mai-production.up.railway.app";

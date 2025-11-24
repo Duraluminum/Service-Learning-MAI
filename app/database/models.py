@@ -57,10 +57,10 @@ async def init_db():
                 print(f'✅ Подключение к PostgreSQL: {db_version.split(',')[0]}')
                 
                 await conn.run_sync(Base.metadata.create_all)
-                print('✅ Таблицы успешно созданы в PostgreSQL')
+                print('✅ Таблицы успешно созданы')
             return
         except Exception as e:
-            print(f'❌ Попытка {attempt + 1}/{max_retries} не удалась: {e}')
+            print(f'Попытка {attempt + 1}/{max_retries} не удалась: {e}')
             if attempt < max_retries - 1:
                 await asyncio.sleep(1)
             else:
@@ -70,4 +70,4 @@ async def initialize_database():
     try:
         await init_db()
     except Exception as e:
-        print(f'⚠️  Предупреждение: Не удалось инициализировать базу данных: {e}')
+        print(f'Не удалось инициализировать базу данных: {e}')

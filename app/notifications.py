@@ -82,4 +82,4 @@ async def send_daily_reminders():
                             
         except Exception as e:
             print(f'Ошибка в send_daily_reminders: {e}')
-            await asyncio.sleep(3600)  # Ждем час при ошибке
+            await asyncio.sleep(3600)

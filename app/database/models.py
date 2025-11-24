@@ -38,7 +38,7 @@ class User(Base):
     __tablename__ = 'users'
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    notifications: Mapped[bool] = mapped_column(default=False)
+    notifications: Mapped[bool] = mapped_column(default=True)
     tg_id = mapped_column(BigInteger)
 
 class Task(Base):
@@ -56,8 +56,6 @@ async def init_db():
     for attempt in range(max_retries):
         try:
             async with engine.begin() as conn:
-                # Проверяем, что мы используем PostgreSQL с asyncpg
-                # ИСПРАВЛЕНИЕ: используем text() для запросов
                 result = await conn.execute(text("SELECT version();"))
                 db_version = result.scalar()
                 print(f"✅ Подключение к PostgreSQL: {db_version.split(',')[0]}")

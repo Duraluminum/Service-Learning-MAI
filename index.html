@@ -493,131 +493,105 @@
 
     <script>
     let tgId = null;
-    const API_URL = "https://service-learning-mai-production.up.railway.app";
+	
+	(function initTelegram() {
+		if (typeof window.Telegram === 'undefined' || !window.Telegram.WebApp) {
+			console.warn("⚠️ Telegram WebApp не обнаружен");
+			return;
+		}
 
-    // === Функция для безопасного получения tg_id ===
-    function getTgIdFromTelegram() {
-        if (typeof window.Telegram !== 'undefined' && window.Telegram.WebApp) {
-            const WebApp = window.Telegram.WebApp;
-            WebApp.ready();
-            WebApp.expand();
+		const WebApp = window.Telegram.WebApp;
+		WebApp.ready();
+		WebApp.expand();
 
-            const initData = WebApp.initData || '';
-            if (initData) {
-                try {
-                    const params = new URLSearchParams(initData);
-                    const userStr = params.get('user');
-                    if (userStr) {
-                        const user = JSON.parse(decodeURIComponent(userStr));
-                        return parseInt(user.id, 10);
-                    }
-                } catch (e) {
-                    console.error("Ошибка парсинга user:", e);
-                }
+		const initDataRaw = WebApp.initData || '';
+		if (!initDataRaw) {
+			console.warn("⚠️ initData пуст");
+			return;
+		}
+
+		try {
+			const params = new URLSearchParams(initDataRaw);
+			const userParam = params.get('user');
+			if (userParam) {
+				const user = JSON.parse(decodeURIComponent(userParam));
+				tgId = parseInt(user.id, 10);
+				console.log("✅ Успешно получен tg_id:", tgId);
+				// После получения tgId вызываем функции, которые требуют его
+				// Например:
+				syncTasksFromServer().then(() => {
+					// Обновим задачи или другую логику
+				});
+			} else {
+				console.warn("⚠️ user отсутствует в initData");
+			}
+		} catch (e) {
+			console.error("❌ Ошибка парсинга user:", e);
+		}
+	})();
+
+        // === Остальной код без изменений ===
+        function formatDate(date) {
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        }
+
+        let tasks = [];
+        let todayFormatted = '';
+
+        async function syncTasksFromServer() {
+            if (!tgId) return;
+            try {
+                const res = await fetch(`${API_URL}/tasks/${tgId}`);
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                const data = await res.json();
+                tasks = Array.isArray(data) ? data.map(t => ({
+                    id: t.id,
+                    text: t.title,
+                    date: t.deadline,
+                    completed: false
+                })) : [];
+            } catch (err) {
+                console.error("Ошибка загрузки задач:", err);
+                tasks = [];
             }
         }
-        return null;
-    }
 
-    // === Ждём, пока Telegram инициализирует WebApp ===
-    function waitForTelegram(maxTries = 20, delay = 100) {
-        return new Promise((resolve) => {
-            let tries = 0;
-            const check = () => {
-                tgId = getTgIdFromTelegram();
-                if (tgId !== null) {
-                    console.log("✅ tg_id получен:", tgId);
-                    resolve(true);
-                } else if (tries < maxTries) {
-                    tries++;
-                    setTimeout(check, delay);
-                } else {
-                    console.warn("⚠️ Telegram WebApp так и не инициализирован");
-                    resolve(false);
-                }
-            };
-            check();
-        });
-    }
+        async function addTask() {
+            const text = document.getElementById('taskInput').value.trim();
+            const date = document.getElementById('dateInput').value;
+            if (!text || !date) {
+                document.getElementById('input-toast').classList.add('show');
+                setTimeout(() => document.getElementById('input-toast').classList.remove('show'), 2000);
+                return;
+            }
+            if (!tgId) {
 
-    // === Основная логика ===
-    async function initializeApp() {
-        const telegramReady = await waitForTelegram();
+                alert("Это приложение работает только внутри Telegram!");
+                return;
+            }
 
-        if (!telegramReady) {
-            // Показываем ошибку
-            alert("Это приложение работает только внутри Telegram!");
-            document.body.innerHTML = `
-                <div style="padding:40px; font-family:sans-serif; text-align:center; color:#555;">
-                    <h2>📱 Только в Telegram</h2>
-                    <p>Откройте это приложение через бота.</p>
-                </div>
-            `;
-            return;
+            try {
+                const response = await fetch(`${API_URL}/tasks/`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ tg_id: tgId, title: text, deadline: date })
+                });
+
+                if (!response.ok) throw new Error("Ошибка сервера");
+
+                await syncTasksFromServer();
+                document.getElementById('taskInput').value = '';
+                renderAllTasks();
+                if (date === todayFormatted) renderTodayTasks();
+
+            } catch (err) {
+                console.error("Ошибка добавления задачи:", err);
+                alert("Не удалось сохранить задание.");
+            }
         }
-
-        // Инициализируем приложение
-        const today = new Date();
-        const todayFormatted = today.toISOString().split('T')[0];
-        document.getElementById('todayDateDisplay').textContent = today.toLocaleDateString('ru-RU');
-        document.getElementById('dateInput').value = todayFormatted;
-
-        await syncTasksFromServer();
-        renderTodayTasks();
-        renderAllTasks();
-    }
-
-    // === Функции приложения (без изменений) ===
-    async function syncTasksFromServer() {
-        if (!tgId) return;
-        try {
-            const res = await fetch(`${API_URL}/tasks/${tgId}`);
-            if (!res.ok) throw new Error(`HTTP ${res.status}`);
-            const data = await res.json();
-            tasks = Array.isArray(data) ? data.map(t => ({
-                id: t.id,
-                text: t.title,
-                date: t.deadline,
-                completed: false
-            })) : [];
-        } catch (err) {
-            console.error("Ошибка загрузки задач:", err);
-            tasks = [];
-        }
-    }
-
-    async function addTask() {
-        const text = document.getElementById('taskInput').value.trim();
-        const date = document.getElementById('dateInput').value;
-        if (!text || !date) {
-            const toast = document.getElementById('input-toast');
-            toast.classList.add('show');
-            setTimeout(() => toast.classList.remove('show'), 2000);
-            return;
-        }
-        if (!tgId) {
-            alert("Это приложение работает только внутри Telegram!");
-            return;
-        }
-
-        try {
-            const response = await fetch(`${API_URL}/tasks/`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ tg_id: tgId, title: text, deadline: date })
-            });
-            if (!response.ok) throw new Error("Ошибка сервера");
-
-            await syncTasksFromServer();
-            document.getElementById('taskInput').value = '';
-            renderAllTasks();
-            const today = new Date().toISOString().split('T')[0];
-            if (date === today) renderTodayTasks();
-        } catch (err) {
-            console.error("Ошибка добавления задачи:", err);
-            alert("Не удалось сохранить задание.");
-        }
-    }
 
         async function toggleTaskCompleted(id) {
             if (!tgId) return;
@@ -702,15 +676,17 @@
         }
 
         // === Инициализация ===
-        let tasks = [];
+        document.addEventListener('DOMContentLoaded', () => {
+            const today = new Date();
+            todayFormatted = formatDate(today);
+            document.getElementById('todayDateDisplay').textContent = today.toLocaleDateString('ru-RU');
+            document.getElementById('dateInput').value = todayFormatted;
 
-    // === Запуск после загрузки DOM ===
-    document.addEventListener('DOMContentLoaded', () => {
-        initializeApp();
-    });
+            loadDarkModeSetting();
+            syncTasksFromServer().then(renderTodayTasks);
+        });
     </script>
 </body>
 
 
 </html>
-

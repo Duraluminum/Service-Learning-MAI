@@ -1,6 +1,6 @@
 import os
 import asyncio
-from sqlalchemy import ForeignKey, String, BigInteger
+from sqlalchemy import ForeignKey, String, BigInteger, text
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 from sqlalchemy.ext.asyncio import AsyncAttrs, async_sessionmaker, create_async_engine
 
@@ -18,13 +18,9 @@ if DATABASE_URL.startswith("postgres://"):
 elif DATABASE_URL.startswith("postgresql://"):
     DATABASE_URL = DATABASE_URL.replace("postgresql://", "postgresql+asyncpg://", 1)
 
-# Если все еще нет asyncpg, добавляем принудительно
-if "postgresql+asyncpg://" not in DATABASE_URL and "postgres" in DATABASE_URL:
-    DATABASE_URL = "postgresql+asyncpg://" + DATABASE_URL.split("://")[1]
-
 print(f"🔗 Final DATABASE_URL: {DATABASE_URL}")
 
-# Создаем engine с ЯВНЫМ указанием asyncpg
+# Создаем engine с правильными настройками для PostgreSQL + asyncpg
 engine = create_async_engine(
     DATABASE_URL,
     echo=True,
@@ -56,12 +52,13 @@ class Task(Base):
 
 async def init_db():
     """Инициализация базы данных с проверкой PostgreSQL"""
-    max_retries = 5
+    max_retries = 3  # Уменьшим количество попыток
     for attempt in range(max_retries):
         try:
             async with engine.begin() as conn:
                 # Проверяем, что мы используем PostgreSQL с asyncpg
-                result = await conn.execute("SELECT version();")
+                # ИСПРАВЛЕНИЕ: используем text() для запросов
+                result = await conn.execute(text("SELECT version();"))
                 db_version = result.scalar()
                 print(f"✅ Подключение к PostgreSQL: {db_version.split(',')[0]}")
                 
@@ -72,6 +69,17 @@ async def init_db():
         except Exception as e:
             print(f"❌ Попытка {attempt + 1}/{max_retries} не удалась: {e}")
             if attempt < max_retries - 1:
-                await asyncio.sleep(2)
+                await asyncio.sleep(1)
             else:
-                raise e
+                print("⚠️  Продолжаем запуск без базы данных...")
+                # Не прерываем запуск при ошибке базы данных
+                return
+
+# Упрощенная инициализация для Railway
+async def initialize_database():
+    """Упрощенная инициализация базы данных"""
+    try:
+        await init_db()
+    except Exception as e:
+        print(f"⚠️  Предупреждение: Не удалось инициализировать базу данных: {e}")
+        print("⚠️  Приложение продолжит работу, но функциональность базы данных будет ограничена")

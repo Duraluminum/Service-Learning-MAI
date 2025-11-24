@@ -495,27 +495,32 @@
         let tgId = null;
         const API_URL = "https://service-learning-mai-production.up.railway.app";
 
-        // === Безопасная инициализация Telegram WebApp ===
-        function initTelegram() {
-            if (window.Telegram?.WebApp) {
-                const tg = window.Telegram.WebApp;
-                tg.ready(); // Говорим Telegram, что приложение готово
-                tg.expand(); // Раскрываем на всю высоту
+        // === Инициализация Telegram WebApp ===
+        (function () {
+            if (typeof window.Telegram !== 'undefined' && window.Telegram.WebApp) {
+                const WebApp = window.Telegram.WebApp;
+                WebApp.ready(); // Говорим Telegram, что приложение готово
+                WebApp.expand(); // Раскрываем на всю высоту
 
-                try {
-                    const user = tg.initDataUnsafe?.user;
-                    if (user?.id) {
-                        tgId = parseInt(user.id, 10); // Преобразуем в число!
+                // Парсим initData вручную
+                const initData = WebApp.initData || '';
+                const params = new URLSearchParams(initData);
+                const userStr = params.get('user');
+
+                if (userStr) {
+                    try {
+                        const user = JSON.parse(decodeURIComponent(userStr));
+                        tgId = parseInt(user.id, 10);
+                    } catch (e) {
+                        console.error("Ошибка парсинга user:", e);
                     }
-                } catch (e) {
-                    console.error("Ошибка инициализации Telegram:", e);
                 }
             }
 
             if (!tgId) {
-                console.warn("⚠️ Запущено не в Telegram WebApp");
+                console.warn("⚠️ Не удалось получить tg_id. Убедитесь, что приложение запущено из Telegram.");
             }
-        }
+        })();
 
         // === Остальной код без изменений ===
         function formatDate(date) {
@@ -550,9 +555,8 @@
             const text = document.getElementById('taskInput').value.trim();
             const date = document.getElementById('dateInput').value;
             if (!text || !date) {
-                const toast = document.getElementById('input-toast');
-                toast.classList.add('show');
-                setTimeout(() => toast.classList.remove('show'), 2000);
+                document.getElementById('input-toast').classList.add('show');
+                setTimeout(() => document.getElementById('input-toast').classList.remove('show'), 2000);
                 return;
             }
             if (!tgId) {
@@ -564,17 +568,10 @@
                 const response = await fetch(`${API_URL}/tasks/`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        tg_id: tgId,      // ← число, не строка!
-                        title: text,
-                        deadline: date
-                    })
+                    body: JSON.stringify({ tg_id: tgId, title: text, deadline: date })
                 });
 
-                if (!response.ok) {
-                    const errorText = await response.text();
-                    throw new Error(`Сервер: ${errorText}`);
-                }
+                if (!response.ok) throw new Error("Ошибка сервера");
 
                 await syncTasksFromServer();
                 document.getElementById('taskInput').value = '';
@@ -583,7 +580,7 @@
 
             } catch (err) {
                 console.error("Ошибка добавления задачи:", err);
-                alert("Не удалось сохранить задание. Попробуйте позже.");
+                alert("Не удалось сохранить задание.");
             }
         }
 
@@ -669,10 +666,8 @@
             }
         }
 
-        // ✅ Инициализация
+        // === Инициализация ===
         document.addEventListener('DOMContentLoaded', () => {
-            initTelegram(); // ← Инициализируем Telegram ДО всего
-
             const today = new Date();
             todayFormatted = formatDate(today);
             document.getElementById('todayDateDisplay').textContent = today.toLocaleDateString('ru-RU');
@@ -682,7 +677,6 @@
             syncTasksFromServer().then(renderTodayTasks);
         });
     </script>
-
 </body>
 
 </html>

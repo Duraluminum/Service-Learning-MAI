@@ -1,4 +1,4 @@
-from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, WebAppInfo
+from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, WebAppInfo, Message
 
 
 def get_settings_keyboard(notifications_enabled: bool) -> InlineKeyboardMarkup:
@@ -12,7 +12,7 @@ def get_settings_keyboard(notifications_enabled: bool) -> InlineKeyboardMarkup:
 
 
 start = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text='Открыть веб-приложение', 
-                                                    web_app=WebAppInfo(url='https://duraluminum.github.io/Service-Learning-MAI/index.html'))], 
+                                                    web_app=WebAppInfo(url=f'https://duraluminum.github.io/Service-Learning-MAI/index.html?tg_id={Message.from_user.id}'))], 
                                             [InlineKeyboardButton(text='Информация о боте',
                                                                 callback_data='bot_info')]])
 
@@ -22,4 +22,4 @@ info = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text='Пер�
 
 
 homework = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text='Открыть веб-приложение', 
-                                                    web_app=WebAppInfo(url='https://duraluminum.github.io/Service-Learning-MAI/index.html'))]])
+                                                    web_app=WebAppInfo(url=f'https://duraluminum.github.io/Service-Learning-MAI/index.html?tg_id={Message.from_user.id}'))]])

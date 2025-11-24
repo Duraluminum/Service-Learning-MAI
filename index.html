@@ -492,7 +492,8 @@
     </div>
 
     <script>
-        let tgId = null;
+        let tgId = 1235353627;
+        console.log("✅ Используется тестовый tgId для отладки:", tgId);
         const API_URL = "https://service-learning-mai-production.up.railway.app";
 
         // === Инициализация Telegram WebApp ===
@@ -560,6 +561,7 @@
                 return;
             }
             if (!tgId) {
+
                 alert("Это приложение работает только внутри Telegram!");
                 return;
             }

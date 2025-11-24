@@ -492,43 +492,84 @@
     </div>
 
     <script>
-    let tgId = null;
-	
-	(function initTelegram() {
-		if (typeof window.Telegram === 'undefined' || !window.Telegram.WebApp) {
-			console.warn("⚠️ Telegram WebApp не обнаружен");
-			return;
-		}
+        const API_URL = "https://service-learning-mai-production.up.railway.app";
+        let tgId = null;
 
-		const WebApp = window.Telegram.WebApp;
-		WebApp.ready();
-		WebApp.expand();
+        const API_URL = "https://service-learning-mai-production.up.railway.app";
+        let tgId = null;
 
-		const initDataRaw = WebApp.initData || '';
-		if (!initDataRaw) {
-			console.warn("⚠️ initData пуст");
-			return;
-		}
+        // 1. Сначала пробуем получить tg_id из URL (самый надёжный способ)
+        const urlParams = new URLSearchParams(window.location.search);
+        const tgIdFromUrl = urlParams.get('tg_id');
+        if (tgIdFromUrl && /^\d+$/.test(tgIdFromUrl)) {
+            tgId = parseInt(tgIdFromUrl, 10);
+            console.log("✅ tgId получен из URL:", tgId);
+        }
 
-		try {
-			const params = new URLSearchParams(initDataRaw);
-			const userParam = params.get('user');
-			if (userParam) {
-				const user = JSON.parse(decodeURIComponent(userParam));
-				tgId = parseInt(user.id, 10);
-				console.log("✅ Успешно получен tg_id:", tgId);
-				// После получения tgId вызываем функции, которые требуют его
-				// Например:
-				syncTasksFromServer().then(() => {
-					// Обновим задачи или другую логику
-				});
-			} else {
-				console.warn("⚠️ user отсутствует в initData");
-			}
-		} catch (e) {
-			console.error("❌ Ошибка парсинга user:", e);
-		}
-	})();
+        // 2. Если нет — пробуем через Telegram WebApp (для будущей совместимости)
+        if (!tgId && typeof window.Telegram !== 'undefined' && window.Telegram.WebApp) {
+            const WebApp = window.Telegram.WebApp;
+            WebApp.ready();
+            WebApp.expand();
+
+            try {
+                const unsafe = WebApp.initDataUnsafe;
+                if (unsafe?.user?.id) {
+                    tgId = parseInt(unsafe.user.id, 10);
+                    console.log("✅ tgId получен из Telegram WebApp:", tgId);
+                }
+            } catch (e) {
+                console.error("Ошибка чтения initDataUnsafe", e);
+            }
+        }
+
+        // 3. Для локальной разработки (опционально)
+        if (!tgId && (location.hostname === 'localhost' || location.hostname === '127.0.0.1')) {
+            tgId = 123456789; // ← ваш реальный Telegram ID
+            console.log("🔧 Локальный режим: tgId =", tgId);
+        }
+
+        // Проверка
+        if (!tgId) {
+            alert("❌ Не удалось определить ваш Telegram ID.\nПожалуйста, откройте приложение через бота.");
+            console.error("tgId не установлен");
+        }
+
+        (function initTelegram() {
+            if (typeof window.Telegram === 'undefined' || !window.Telegram.WebApp) {
+                console.warn("⚠️ Telegram WebApp не обнаружен");
+                return;
+            }
+
+            const WebApp = window.Telegram.WebApp;
+            WebApp.ready();
+            WebApp.expand();
+
+            const initDataRaw = WebApp.initData || '';
+            if (!initDataRaw) {
+                console.warn("⚠️ initData пуст");
+                return;
+            }
+
+            try {
+                const params = new URLSearchParams(initDataRaw);
+                const userParam = params.get('user');
+                if (userParam) {
+                    const user = JSON.parse(decodeURIComponent(userParam));
+                    tgId = parseInt(user.id, 10);
+                    console.log("✅ Успешно получен tg_id:", tgId);
+                    // После получения tgId вызываем функции, которые требуют его
+                    // Например:
+                    syncTasksFromServer().then(() => {
+                        // Обновим задачи или другую логику
+                    });
+                } else {
+                    console.warn("⚠️ user отсутствует в initData");
+                }
+            } catch (e) {
+                console.error("❌ Ошибка парсинга user:", e);
+            }
+        })();
 
         // === Остальной код без изменений ===
         function formatDate(date) {

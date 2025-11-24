@@ -54,8 +54,7 @@ async def init_db():
             async with engine.begin() as conn:
                 result = await conn.execute(text('SELECT version();'))
                 db_version = result.scalar()
-                print(f'✅ Подключение к PostgreSQL: {db_version.split(',')[0]}')
-                
+                               
                 await conn.run_sync(Base.metadata.create_all)
                 print('✅ Таблицы успешно созданы')
             return

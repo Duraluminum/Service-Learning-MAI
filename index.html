@@ -492,53 +492,42 @@
     </div>
 
     <script>
-        let tgId = null;
-        if (typeof window.Telegram !== 'undefined' && window.Telegram.WebApp) {
-            const WebApp = window.Telegram.WebApp;
-            WebApp.ready();
-            WebApp.expand();
+    let tgId = null;
+    const API_URL = "https://service-learning-mai-production.up.railway.app";
 
-            const params = new URLSearchParams(WebApp.initData || '');
-            const userStr = params.get('user');
-            if (userStr) {
-                try {
-                    const user = JSON.parse(decodeURIComponent(userStr));
-                    tgId = parseInt(user.id, 10);
-                } catch (e) {
-                    console.error("Ошибка парсинга user:", e);
-                }
-            }
+    // === Надёжное получение tg_id из Telegram WebApp ===
+    (function initTelegram() {
+        if (typeof window.Telegram === 'undefined' || !window.Telegram.WebApp) {
+            console.warn("⚠️ Telegram WebApp не обнаружен");
+            return;
         }
 
-        console.log("✅ Используется тестовый tgId для отладки:", tgId);
-        const API_URL = "https://service-learning-mai-production.up.railway.app";
+        const WebApp = window.Telegram.WebApp;
+        WebApp.ready(); // Обязательно: уведомляем Telegram, что приложение готово
+        WebApp.expand(); // Раскрываем на всю высоту
 
-        // === Инициализация Telegram WebApp ===
-        (function () {
-            if (typeof window.Telegram !== 'undefined' && window.Telegram.WebApp) {
-                const WebApp = window.Telegram.WebApp;
-                WebApp.ready(); // Говорим Telegram, что приложение готово
-                WebApp.expand(); // Раскрываем на всю высоту
+        // Получаем initData — строку вида "query_id=...&user=...&auth_date=..."
+        const initDataRaw = WebApp.initData || '';
+        if (!initDataRaw) {
+            console.warn("⚠️ initData пуст");
+            return;
+        }
 
-                // Парсим initData вручную
-                const initData = WebApp.initData || '';
-                const params = new URLSearchParams(initData);
-                const userStr = params.get('user');
-
-                if (userStr) {
-                    try {
-                        const user = JSON.parse(decodeURIComponent(userStr));
-                        tgId = parseInt(user.id, 10);
-                    } catch (e) {
-                        console.error("Ошибка парсинга user:", e);
-                    }
-                }
+        // Парсим user из initData
+        try {
+            const params = new URLSearchParams(initDataRaw);
+            const userParam = params.get('user');
+            if (userParam) {
+                const user = JSON.parse(decodeURIComponent(userParam));
+                tgId = parseInt(user.id, 10);
+                console.log("✅ Успешно получен tg_id:", tgId);
+            } else {
+                console.warn("⚠️ user отсутствует в initData");
             }
-
-            if (!tgId) {
-                console.warn("⚠️ Не удалось получить tg_id. Убедитесь, что приложение запущено из Telegram.");
-            }
-        })();
+        } catch (e) {
+            console.error("❌ Ошибка парсинга user:", e);
+        }
+    })();
 
         // === Остальной код без изменений ===
         function formatDate(date) {
@@ -697,5 +686,6 @@
         });
     </script>
 </body>
+
 
 </html>

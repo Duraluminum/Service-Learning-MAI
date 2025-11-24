@@ -4,25 +4,15 @@ from sqlalchemy import ForeignKey, String, BigInteger
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 from sqlalchemy.ext.asyncio import AsyncAttrs, async_sessionmaker, create_async_engine
 
-# Получаем DATABASE_URL из переменных окружения
 DATABASE_URL = os.getenv("DATABASE_URL")
 
-if not DATABASE_URL:
-    raise ValueError("DATABASE_URL не найден в переменных окружения!")
 
-print(f"🔗 Подключаемся к базе: {DATABASE_URL.split('@')[1] if '@' in DATABASE_URL else DATABASE_URL}")
-
-# Обязательно преобразуем postgres:// в postgresql+asyncpg://
-if DATABASE_URL.startswith("postgres://"):
-    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql+asyncpg://", 1)
-
-# Создаем engine с правильными настройками для PostgreSQL
 engine = create_async_engine(
     DATABASE_URL,
     echo=True,
     future=True,
-    pool_pre_ping=True,  # Проверяем соединение перед использованием
-    pool_recycle=300,    # Переподключаемся каждые 5 минут
+    pool_pre_ping=True,
+    pool_recycle=300,
 )
 
 async_session = async_sessionmaker(bind=engine, expire_on_commit=False)
@@ -52,12 +42,6 @@ async def init_db():
     for attempt in range(max_retries):
         try:
             async with engine.begin() as conn:
-                # Проверяем, что мы используем PostgreSQL
-                result = await conn.execute("SELECT version();")
-                db_version = result.scalar()
-                print(f"✅ Подключение к PostgreSQL: {db_version.split(',')[0]}")
-                
-                # Создаем таблицы
                 await conn.run_sync(Base.metadata.create_all)
                 print("✅ Таблицы успешно созданы в PostgreSQL")
             return

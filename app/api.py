@@ -8,7 +8,6 @@ import asyncio
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Принудительная инициализация базы при запуске
     await init_db()
     yield
 

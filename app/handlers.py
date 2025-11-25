@@ -2,16 +2,23 @@ from aiogram import Router, F
 from aiogram.types import Message, CallbackQuery
 from aiogram.filters import CommandStart, Command
 from aiogram.exceptions import TelegramBadRequest
+import logging
 
 import app.keyboards as kb
 from app.database.requests import add_user, toggle_notifications, get_user_notifications_enabled
 
 router = Router()
 
+logger = logging.getLogger(__name__)
+
+
 @router.message(CommandStart())
 async def cmd_start(message: Message):
-    await add_user(message.from_user.id)
-    await message.answer('Нажми на кнопку ниже, чтобы открыть веб-приложение', reply_markup=kb.start)
+    try:
+        await add_user(message.from_user.id)
+        await message.answer('Нажми на кнопку ниже, чтобы открыть веб-приложение', reply_markup=kb.start)
+    except Exception as e:
+        logger.exception(f"Ошибка при обработке /start от пользователя {message.from_user.id}")
 
 
 @router.message(Command('info'))

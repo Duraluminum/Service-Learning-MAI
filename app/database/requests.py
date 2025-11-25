@@ -3,14 +3,17 @@ from .models import async_session, User, Task
 from typing import Optional
 
 async def add_user(tg_id: int) -> User:
+    print(f"[DEBUG] add_user вызван для tg_id={tg_id}")
     async with async_session() as session:
         user = await session.scalar(select(User).where(User.tg_id == tg_id))
         if user:
+            print(f"[DEBUG] Пользователь найден: id={user.id}")
             return user
         new_user = User(tg_id=tg_id)
         session.add(new_user)
         await session.commit()
         await session.refresh(new_user)
+        print(f"[DEBUG] Создан новый пользователь: id={new_user.id}")
         return new_user
 
 

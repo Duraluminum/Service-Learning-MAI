@@ -1,4 +1,3 @@
-</html>
 <!DOCTYPE html>
 <html lang="ru">
 
@@ -493,7 +492,24 @@
     </div>
 
     <script>
-        let tgId = 1235353627;
+        let tgId = null;
+        if (typeof window.Telegram !== 'undefined' && window.Telegram.WebApp) {
+            const WebApp = window.Telegram.WebApp;
+            WebApp.ready();
+            WebApp.expand();
+
+            const params = new URLSearchParams(WebApp.initData || '');
+            const userStr = params.get('user');
+            if (userStr) {
+                try {
+                    const user = JSON.parse(decodeURIComponent(userStr));
+                    tgId = parseInt(user.id, 10);
+                } catch (e) {
+                    console.error("Ошибка парсинга user:", e);
+                }
+            }
+        }
+
         console.log("✅ Используется тестовый tgId для отладки:", tgId);
         const API_URL = "https://service-learning-mai-production.up.railway.app";
 
@@ -681,5 +697,3 @@
         });
     </script>
 </body>
-
-</html>

@@ -492,80 +492,67 @@
     </div>
 
     <script>
-    document.addEventListener('DOMContentLoaded', async () => {
-        // === 1. Конфигурация ===
-        const API_URL = "https://service-learning-mai-production.up.railway.app";
         let tgId = null;
-    
-        // === 2. Безопасное получение tg_id из Telegram WebApp ===
-        function getTelegramUserId() {
-            try {
-                if (typeof window.Telegram !== 'undefined' && window.Telegram.WebApp) {
-                    const WebApp = window.Telegram.WebApp;
-                    WebApp.ready(); // Уведомляем Telegram, что приложение готово
-                    WebApp.expand(); // Раскрываем на всю высоту
-    
-                    // Способ 1: Через initDataUnsafe (новые версии Telegram)
-                    if (WebApp.initDataUnsafe?.user?.id) {
-                        return parseInt(WebApp.initDataUnsafe.user.id, 10);
-                    }
-    
-                    // Способ 2: Через парсинг initData (универсальный)
-                    const initData = WebApp.initData || '';
-                    if (initData) {
-                        const params = new URLSearchParams(initData);
-                        const userParam = params.get('user');
-                        if (userParam) {
-                            const user = JSON.parse(decodeURIComponent(userParam));
-                            return parseInt(user.id, 10);
-                        }
+        if (typeof window.Telegram !== 'undefined' && window.Telegram.WebApp) {
+            const WebApp = window.Telegram.WebApp;
+            WebApp.ready();
+            WebApp.expand();
+
+            const params = new URLSearchParams(WebApp.initData || '');
+            const userStr = params.get('user');
+            if (userStr) {
+                try {
+                    const user = JSON.parse(decodeURIComponent(userStr));
+                    tgId = parseInt(user.id, 10);
+                } catch (e) {
+                    console.error("Ошибка парсинга user:", e);
+                }
+            }
+        }
+
+        console.log("✅ Используется тестовый tgId для отладки:", tgId);
+        const API_URL = "https://service-learning-mai-production.up.railway.app";
+
+        // === Инициализация Telegram WebApp ===
+        (function () {
+            if (typeof window.Telegram !== 'undefined' && window.Telegram.WebApp) {
+                const WebApp = window.Telegram.WebApp;
+                WebApp.ready(); // Говорим Telegram, что приложение готово
+                WebApp.expand(); // Раскрываем на всю высоту
+
+                // Парсим initData вручную
+                const initData = WebApp.initData || '';
+                const params = new URLSearchParams(initData);
+                const userStr = params.get('user');
+
+                if (userStr) {
+                    try {
+                        const user = JSON.parse(decodeURIComponent(userStr));
+                        tgId = parseInt(user.id, 10);
+                    } catch (e) {
+                        console.error("Ошибка парсинга user:", e);
                     }
                 }
-            } catch (e) {
-                console.error('Ошибка получения данных Telegram:', e);
             }
-            return null;
-        }
-    
-        // === 3. Ждём инициализации Telegram WebApp ===
-        // Telegram инициализирует API асинхронно, особенно на мобильных устройствах
-        for (let i = 0; i < 10; i++) {
-            tgId = getTelegramUserId();
-            if (tgId) break;
-            await new Promise(resolve => setTimeout(resolve, 200)); // ждём 200мс
-        }
-    
-        // === 4. Проверка результата ===
-        if (!tgId) {
-            document.body.innerHTML = `
-                <div style="padding:40px;font-family:sans-serif;text-align:center;">
-                    <h2>📱 Только в Telegram</h2>
-                    <p>Откройте это приложение через бота.</p>
-                    <p style="font-size:14px;color:#777;margin-top:20px;">
-                        Убедитесь, что вы нажали кнопку «Открыть веб-приложение» в Telegram
-                    </p>
-                </div>
-            `;
-            return;
-        }
-    
-        console.log("✅ Пользователь определён. ID:", tgId);
-    
-        // === 5. Функции приложения (принимают tgId как параметр) ===
+
+            if (!tgId) {
+                console.warn("⚠️ Не удалось получить tg_id. Убедитесь, что приложение запущено из Telegram.");
+            }
+        })();
+
+        // === Остальной код без изменений ===
         function formatDate(date) {
             const year = date.getFullYear();
             const month = String(date.getMonth() + 1).padStart(2, '0');
             const day = String(date.getDate()).padStart(2, '0');
             return `${year}-${month}-${day}`;
         }
-    
+
         let tasks = [];
-        const today = new Date();
-        const todayFormatted = formatDate(today);
-        document.getElementById('todayDateDisplay').textContent = today.toLocaleDateString('ru-RU');
-        document.getElementById('dateInput').value = todayFormatted;
-    
+        let todayFormatted = '';
+
         async function syncTasksFromServer() {
+            if (!tgId) return;
             try {
                 const res = await fetch(`${API_URL}/tasks/${tgId}`);
                 if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -581,41 +568,43 @@
                 tasks = [];
             }
         }
-    
+
         async function addTask() {
             const text = document.getElementById('taskInput').value.trim();
             const date = document.getElementById('dateInput').value;
             if (!text || !date) {
-                const toast = document.getElementById('input-toast');
-                toast.classList.add('show');
-                setTimeout(() => toast.classList.remove('show'), 2000);
+                document.getElementById('input-toast').classList.add('show');
+                setTimeout(() => document.getElementById('input-toast').classList.remove('show'), 2000);
                 return;
             }
-    
+            if (!tgId) {
+
+                alert("Это приложение работает только внутри Telegram!");
+                return;
+            }
+
             try {
                 const response = await fetch(`${API_URL}/tasks/`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ tg_id: tgId, title: text, deadline: date })
                 });
-    
-                if (!response.ok) {
-                    const errorText = await response.text();
-                    throw new Error(`Сервер: ${errorText || response.status}`);
-                }
-    
+
+                if (!response.ok) throw new Error("Ошибка сервера");
+
                 await syncTasksFromServer();
                 document.getElementById('taskInput').value = '';
                 renderAllTasks();
                 if (date === todayFormatted) renderTodayTasks();
-    
+
             } catch (err) {
                 console.error("Ошибка добавления задачи:", err);
-                alert("Не удалось сохранить задание. Попробуйте позже.");
+                alert("Не удалось сохранить задание.");
             }
         }
-    
+
         async function toggleTaskCompleted(id) {
+            if (!tgId) return;
             try {
                 await fetch(`${API_URL}/tasks/${id}`, { method: 'DELETE' });
                 await syncTasksFromServer();
@@ -626,7 +615,7 @@
                 alert("Не удалось удалить задание.");
             }
         }
-    
+
         function renderTodayTasks() {
             const list = document.getElementById('todayTaskList');
             list.innerHTML = '';
@@ -642,7 +631,7 @@
                 list.appendChild(li);
             });
         }
-    
+
         function renderAllTasks() {
             const list = document.getElementById('allTaskList');
             list.innerHTML = '';
@@ -660,20 +649,20 @@
                 list.appendChild(li);
             });
         }
-    
+
         function goToAllTasksPage() {
             document.getElementById('homePage').style.display = 'none';
             document.getElementById('allTasksPage').style.display = 'block';
             renderAllTasks();
             document.getElementById('dateInput').value = todayFormatted;
         }
-    
+
         function goToHomePage() {
             document.getElementById('allTasksPage').style.display = 'none';
             document.getElementById('homePage').style.display = 'block';
             renderTodayTasks();
         }
-    
+
         function toggleDarkMode() {
             document.body.classList.toggle('dark-mode');
             const isDark = document.body.classList.contains('dark-mode');
@@ -685,7 +674,7 @@
             renderTodayTasks();
             renderAllTasks();
         }
-    
+
         function loadDarkModeSetting() {
             if (localStorage.getItem('darkModeEnabled') === 'true') {
                 document.body.classList.add('dark-mode');
@@ -695,20 +684,18 @@
                 });
             }
         }
-    
-        // === 6. Запуск приложения ===
-        loadDarkModeSetting();
-        await syncTasksFromServer();
-        renderTodayTasks();
-    
-        // Назначаем обработчики событий
-        document.querySelector('.add-task-btn').addEventListener('click', addTask);
-        document.querySelector('.btn').addEventListener('click', goToAllTasksPage);
-        document.querySelector('.back-btn').addEventListener('click', goToHomePage);
-        document.querySelector('.theme-toggle').addEventListener('click', toggleDarkMode);
-    });
-</script>
-    
+
+        // === Инициализация ===
+        document.addEventListener('DOMContentLoaded', () => {
+            const today = new Date();
+            todayFormatted = formatDate(today);
+            document.getElementById('todayDateDisplay').textContent = today.toLocaleDateString('ru-RU');
+            document.getElementById('dateInput').value = todayFormatted;
+
+            loadDarkModeSetting();
+            syncTasksFromServer().then(renderTodayTasks);
+        });
+    </script>
 </body>
 
 </html>

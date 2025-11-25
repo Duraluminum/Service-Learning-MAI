@@ -1,4 +1,4 @@
-from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, WebAppInfo, Message
+from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, WebAppInfo
 
 
 def get_settings_keyboard(notifications_enabled: bool) -> InlineKeyboardMarkup:

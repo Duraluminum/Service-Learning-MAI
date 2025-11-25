@@ -10,10 +10,8 @@ from app.bot import bot
 
 async def start_bot():
     await init_db()
-
     dp = Dispatcher()
     dp.include_router(router)
-    
     asyncio.create_task(send_daily_reminders())
     await dp.start_polling(bot)
 

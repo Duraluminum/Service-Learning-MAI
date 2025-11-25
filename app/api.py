@@ -4,6 +4,7 @@ from pydantic import BaseModel
 from app.database.requests import add_user, get_active_tasks, create_task, delete_task
 from app.database.models import init_db
 from contextlib import asynccontextmanager
+import asyncio
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -18,6 +19,7 @@ app.add_middleware(
         'https://duraluminum.github.io',
         'https://t.me', 
         'https://web.telegram.org',
+        'http://localhost:3000'
     ],
     allow_credentials=True,
     allow_methods=['*'],
@@ -27,7 +29,7 @@ app.add_middleware(
 class TaskCreate(BaseModel):
     tg_id: int
     title: str
-    deadline: str
+    deadline: str  # YYYY-MM-DD
 
 @app.get('/')
 async def root():

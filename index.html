@@ -492,41 +492,53 @@
     </div>
 
     <script>
-
-        // === Инициализация Telegram WebApp ===
-        // === Получение tgId — приоритет: URL → Telegram WebApp → ошибка ===
-        const urlParams = new URLSearchParams(window.location.search);
         let tgId = null;
-
-        // 1. Пробуем из URL (надёжно!)
-        const tgIdFromUrl = urlParams.get('tg_id');
-        if (tgIdFromUrl && /^\d+$/.test(tgIdFromUrl)) {
-            tgId = parseInt(tgIdFromUrl, 10);
-        }
-
-        // 2. Резерв: из Telegram WebApp (если URL не сработал)
-        if (!tgId && typeof window.Telegram !== 'undefined' && window.Telegram.WebApp) {
+        if (typeof window.Telegram !== 'undefined' && window.Telegram.WebApp) {
             const WebApp = window.Telegram.WebApp;
             WebApp.ready();
             WebApp.expand();
-            try {
-                const user = WebApp.initDataUnsafe?.user;
-                if (user?.id) {
+
+            const params = new URLSearchParams(WebApp.initData || '');
+            const userStr = params.get('user');
+            if (userStr) {
+                try {
+                    const user = JSON.parse(decodeURIComponent(userStr));
                     tgId = parseInt(user.id, 10);
+                } catch (e) {
+                    console.error("Ошибка парсинга user:", e);
                 }
-            } catch (e) {
-                console.error("Ошибка получения user.id из WebApp:", e);
             }
         }
 
-        // 3. Если всё ещё нет — блокируем
-        if (!tgId) {
-            alert("❌ Не удалось определить ваш профиль.\nПожалуйста, откройте приложение через бота.");
-            throw new Error("tgId не установлен");
-        }
-
+        console.log("✅ Используется тестовый tgId для отладки:", tgId);
         const API_URL = "https://service-learning-mai-production.up.railway.app";
-        console.log("✅ Используется tgId:", tgId);
+
+        // === Инициализация Telegram WebApp ===
+        (function () {
+            if (typeof window.Telegram !== 'undefined' && window.Telegram.WebApp) {
+                const WebApp = window.Telegram.WebApp;
+                WebApp.ready(); // Говорим Telegram, что приложение готово
+                WebApp.expand(); // Раскрываем на всю высоту
+
+                // Парсим initData вручную
+                const initData = WebApp.initData || '';
+                const params = new URLSearchParams(initData);
+                const userStr = params.get('user');
+
+                if (userStr) {
+                    try {
+                        const user = JSON.parse(decodeURIComponent(userStr));
+                        tgId = parseInt(user.id, 10);
+                    } catch (e) {
+                        console.error("Ошибка парсинга user:", e);
+                    }
+                }
+            }
+
+            if (!tgId) {
+                console.warn("⚠️ Не удалось получить tg_id. Убедитесь, что приложение запущено из Telegram.");
+            }
+        })();
 
         // === Остальной код без изменений ===
         function formatDate(date) {

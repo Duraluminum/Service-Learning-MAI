@@ -22,8 +22,21 @@
             --header-text: #fff;
             --completed-bg: #e0e0e0;
             --completed-text: #888;
+            --overdue: background-color: #ffebee !important;
+            color: #d32f2f;
             --n-c: #fff;
             --error-color: #FF4747;
+        }
+
+        /* Просроченные, но ещё не удалённые задачи */
+        .overdue {
+            background-color: #ffebee !important;
+            color: #d32f2f !important;
+        }
+
+        .dark-mode .overdue {
+            background-color: #3a1d1d !important;
+            color: #f48fb1 !important;
         }
 
         .dark-mode {
@@ -496,7 +509,6 @@
         let tgId = null;
         let isTelegram = false;
 
-        // 1. Пробуем получить tg_id из URL (надёжно)
         const urlParams = new URLSearchParams(window.location.search);
         const tgIdFromUrl = urlParams.get('tg_id');
         if (tgIdFromUrl && /^\d+$/.test(tgIdFromUrl)) {
@@ -504,7 +516,6 @@
             isTelegram = true;
         }
 
-        // 2. Пробуем через Telegram WebApp
         if (!tgId && typeof window.Telegram !== 'undefined' && window.Telegram.WebApp) {
             const WebApp = window.Telegram.WebApp;
             WebApp.ready();
@@ -521,21 +532,58 @@
         }
 
         const API_URL = "https://service-learning-mai-production.up.railway.app";
-        console.log(isTelegram ? "✅ Режим: Telegram" : "🌐 Режим: Браузер (локальное хранилище)");
+        console.log(isTelegram ? "✅ Режим: Telegram" : "🌐 Режим: Браузер");
 
-        // === Локальное хранилище для браузера ===
         const LOCAL_STORAGE_KEY = 'tasks_local';
 
+        function formatDate(date) {
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        }
+
+        // === Сколько дней прошло с дедлайна? ===
+        function daysSinceDeadline(taskDate) {
+            const deadline = new Date(taskDate);
+            deadline.setHours(0, 0, 0, 0);
+            const now = new Date();
+            now.setHours(0, 0, 0, 0);
+            const diffTime = now - deadline;
+            return Math.floor(diffTime / (1000 * 60 * 60 * 24));
+        }
+
+        // === Фильтрация: удаляем только если >5 дней с дедлайна ===
+        function filterTasks(tasks) {
+            return tasks.filter(task => {
+                const days = daysSinceDeadline(task.date);
+                return days <= 5; // остаются задачи, у которых ≤5 дней с дедлайна
+            });
+        }
+
+        // === Определяет, просрочена ли задача (но ещё в пределах 5 дней) ===
+        function isOverdue(task) {
+            const days = daysSinceDeadline(task.date);
+            return days >= 0 && days <= 5 && !task.completed;
+        }
+
+        // === Работа с localStorage ===
         function loadLocalTasks() {
-            const data = localStorage.getItem(LOCAL_STORAGE_KEY);
-            return data ? JSON.parse(data) : [];
+            const raw = localStorage.getItem(LOCAL_STORAGE_KEY);
+            let tasks = raw ? JSON.parse(raw) : [];
+            const filtered = filterTasks(tasks);
+            if (filtered.length !== tasks.length) {
+                saveLocalTasks(filtered);
+                tasks = filtered;
+            }
+            return tasks;
         }
 
         function saveLocalTasks(tasks) {
             localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(tasks));
         }
 
-        // === Функции синхронизации ===
+        // === Основные данные ===
         let tasks = [];
         let todayFormatted = '';
 
@@ -545,14 +593,16 @@
                     const res = await fetch(`${API_URL}/tasks/${tgId}`);
                     if (!res.ok) throw new Error(`HTTP ${res.status}`);
                     const data = await res.json();
-                    tasks = Array.isArray(data) ? data.map(t => ({
-                        id: t.id,
-                        text: t.title,
-                        date: t.deadline,
-                        completed: false
-                    })) : [];
+                    tasks = filterTasks(
+                        Array.isArray(data) ? data.map(t => ({
+                            id: t.id,
+                            text: t.title,
+                            date: t.deadline,
+                            completed: false
+                        })) : []
+                    );
                 } catch (err) {
-                    console.error("Ошибка загрузки задач из API:", err);
+                    console.error("Ошибка загрузки задач:", err);
                     tasks = [];
                 }
             } else {
@@ -587,7 +637,7 @@
                 }
             } else {
                 const newTask = {
-                    id: Date.now(), // уникальный ID
+                    id: Date.now(),
                     text: text,
                     date: date,
                     completed: false
@@ -601,7 +651,6 @@
             if (date === todayFormatted) renderTodayTasks();
         }
 
-        // === Переключение статуса выполнения ===
         async function toggleTaskCompleted(id) {
             const task = tasks.find(t => t.id === id);
             if (!task) return;
@@ -609,9 +658,7 @@
             task.completed = !task.completed;
 
             if (isTelegram) {
-                // В Telegram мы пока не поддерживаем PATCH, поэтому просто обновляем локально
-                // (если позже добавите PATCH — раскомментируйте отправку)
-                console.log("Замечание: статус 'выполнено' не сохраняется в Telegram без PATCH-эндпоинта");
+                console.log("Статус 'выполнено' не сохраняется без PATCH");
             } else {
                 saveLocalTasks(tasks);
             }
@@ -620,7 +667,7 @@
             renderAllTasks();
         }
 
-        // === Рендеринг (без изменений) ===
+        // === Рендеринг ===
         function renderTodayTasks() {
             const list = document.getElementById('todayTaskList');
             list.innerHTML = '';
@@ -632,7 +679,11 @@
             tasksToday.forEach(task => {
                 const li = document.createElement('li');
                 li.classList.add('task-item');
-                if (task.completed) li.classList.add('completed');
+                if (task.completed) {
+                    li.classList.add('completed');
+                } else if (isOverdue(task)) {
+                    li.classList.add('overdue');
+                }
                 li.innerHTML = `<span>${task.text}</span><input type="checkbox" ${task.completed ? 'checked' : ''} onchange="toggleTaskCompleted(${task.id})">`;
                 list.appendChild(li);
             });
@@ -645,14 +696,18 @@
             sorted.forEach(task => {
                 const li = document.createElement('li');
                 li.classList.add('task-item');
-                if (task.completed) li.classList.add('completed');
+                if (task.completed) {
+                    li.classList.add('completed');
+                } else if (isOverdue(task)) {
+                    li.classList.add('overdue');
+                }
                 li.innerHTML = `
-                <span>${task.text}</span>
-                <div>
-                    <span class="task-date-display">${new Date(task.date).toLocaleDateString('ru-RU')}</span>
-                    <input type="checkbox" ${task.completed ? 'checked' : ''} onchange="toggleTaskCompleted(${task.id})">
-                </div>
-            `;
+                    <span>${task.text}</span>
+                    <div>
+                        <span class="task-date-display">${new Date(task.date).toLocaleDateString('ru-RU')}</span>
+                        <input type="checkbox" ${task.completed ? 'checked' : ''} onchange="toggleTaskCompleted(${task.id})">
+                    </div>
+                `;
                 list.appendChild(li);
             });
         }
@@ -693,13 +748,6 @@
         }
 
         // === Инициализация ===
-        function formatDate(date) {
-            const year = date.getFullYear();
-            const month = String(date.getMonth() + 1).padStart(2, '0');
-            const day = String(date.getDate()).padStart(2, '0');
-            return `${year}-${month}-${day}`;
-        }
-
         document.addEventListener('DOMContentLoaded', () => {
             const today = new Date();
             todayFormatted = formatDate(today);

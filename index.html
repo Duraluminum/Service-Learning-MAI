@@ -543,28 +543,36 @@
             return `${year}-${month}-${day}`;
         }
 
-        // === Сколько дней прошло с дедлайна? ===
         function daysSinceDeadline(taskDate) {
             const deadline = new Date(taskDate);
             deadline.setHours(0, 0, 0, 0);
             const now = new Date();
             now.setHours(0, 0, 0, 0);
             const diffTime = now - deadline;
-            return Math.floor(diffTime / (1000 * 60 * 60 * 24));
+            const days = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+            return days; // может быть отрицательным (дедлайн в будущем)
         }
 
-        // === Фильтрация: удаляем только если >5 дней с дедлайна ===
+
         function filterTasks(tasks) {
             return tasks.filter(task => {
                 const days = daysSinceDeadline(task.date);
-                return days <= 5; // остаются задачи, у которых ≤5 дней с дедлайна
+                // Удаляем только если:
+                // - задача НЕ выполнена, И прошло >5 дней с дедлайна
+                // - ИЛИ задача выполнена, но мы не хотим её хранить (у нас — удаляем все >5 дней)
+                return days <= 5;
             });
         }
 
         // === Определяет, просрочена ли задача (но ещё в пределах 5 дней) ===
+        // Проверяет, является ли задача просроченной (дедлайн строго в прошлом)
         function isOverdue(task) {
-            const days = daysSinceDeadline(task.date);
-            return days >= 0 && days <= 5 && !task.completed;
+            const taskDate = new Date(task.date);
+            taskDate.setHours(0, 0, 0, 0);
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            // Просрочена, если дедлайн был ВЧЕРА или раньше, и задача НЕ выполнена
+            return taskDate < today && !task.completed;
         }
 
         // === Работа с localStorage ===
@@ -655,16 +663,45 @@
             const task = tasks.find(t => t.id === id);
             if (!task) return;
 
-            task.completed = !task.completed;
+            const wasOverdue = isOverdue(task); // запоминаем, была ли просрочена
+
+            task.completed = true; // выполняем (всегда ставим true при галочке)
 
             if (isTelegram) {
-                console.log("Статус 'выполнено' не сохраняется без PATCH");
+                // В Telegram: сразу удаляем задачу при выполнении
+                try {
+                    await fetch(`${API_URL}/tasks/${id}`, { method: 'DELETE' });
+                    // Удаляем из локального списка
+                    tasks = tasks.filter(t => t.id !== id);
+                    saveOrSync(); // обновляем отображение
+                } catch (err) {
+                    console.error("Ошибка удаления задачи в Telegram:", err);
+                    // Откатываем, если нужно
+                    task.completed = false;
+                }
+            } else {
+                // В браузере: если была просрочена — удаляем сразу
+                if (wasOverdue) {
+                    tasks = tasks.filter(t => t.id !== id);
+                    saveLocalTasks(tasks);
+                } else {
+                    // Иначе — просто сохраняем статус
+                    saveLocalTasks(tasks);
+                }
+                renderTodayTasks();
+                renderAllTasks();
+            }
+        }
+
+        // Вспомогательная функция для обновления отображения
+        function saveOrSync() {
+            if (isTelegram) {
+                syncTasksFromServer();
             } else {
                 saveLocalTasks(tasks);
+                renderTodayTasks();
+                renderAllTasks();
             }
-
-            renderTodayTasks();
-            renderAllTasks();
         }
 
         // === Рендеринг ===
